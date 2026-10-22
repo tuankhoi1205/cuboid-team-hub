@@ -1,0 +1,1600 @@
+[
+  {
+    "id": "import-project-cuboid",
+    "kind": "project",
+    "data": {
+      "name": "3D Cuboid · KPI hiện tại",
+      "description": "Nhập từ KPI_Ngay. Tên dự án gốc chưa được ghi trong nguồn; Lead có thể đổi tên.",
+      "instructions": "Theo hướng dẫn annotation của team. Chỉ tiêu gốc: 1.200 cuboid/ngày. QA/QC phân bổ 50% annotation và 50% QC. Sản lượng lịch sử là số cuboid quy đổi ID × frame theo công thức trong sheet, chưa phải kết quả nghiệm thu QC.",
+      "unit": "cuboid",
+      "target": 1200,
+      "targetPeriod": "day",
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceCell": "'Bao cao tuan'!B4",
+      "imported": true
+    },
+    "status": "active"
+  },
+  {
+    "id": "import-daily-member-1-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1241",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 840,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 14.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1241",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B3:F3"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-1",
+    "date": "2026-10-20",
+    "natural_key": "member-1:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-1-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1241",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1200,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 34.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1241",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G3:K3"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-1",
+    "date": "2026-10-21",
+    "natural_key": "member-1:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-2-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1264",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1200,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 20.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1264",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B4:F4"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-2",
+    "date": "2026-10-20",
+    "natural_key": "member-2:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-2-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1264",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1140,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 39.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": null,
+          "taskIdInherited": true,
+          "sourceRange": "Tuan1!G4:K4"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-2",
+    "date": "2026-10-21",
+    "natural_key": "member-2:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-3-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1198",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1020,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "frame 36 nhé bị nhảy objID 15 => 73\nvì ko quy định ko xóa ID và ID 15 vẫn ở đấy thì xử lý ntn",
+          "evidence": "",
+          "sourceIds": 17.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1198",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B5:F5"
+        }
+      ],
+      "completed": "",
+      "blockers": "frame 36 nhé bị nhảy objID 15 => 73\nvì ko quy định ko xóa ID và ID 15 vẫn ở đấy thì xử lý ntn",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-3",
+    "date": "2026-10-20",
+    "natural_key": "member-3:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-3-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1198",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1260,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 38.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1198",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G5:K5"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-3",
+    "date": "2026-10-21",
+    "natural_key": "member-3:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-4-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1202",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 0,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "làm tới ID 17 rework 11h30 21/10",
+          "evidence": "",
+          "sourceIds": 0.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1202",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B6:F6"
+        }
+      ],
+      "completed": "",
+      "blockers": "làm tới ID 17 rework 11h30 21/10",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-4",
+    "date": "2026-10-20",
+    "natural_key": "member-4:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-4-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1202",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 780,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 13.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": null,
+          "taskIdInherited": true,
+          "sourceRange": "Tuan1!G6:K6"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-4",
+    "date": "2026-10-21",
+    "natural_key": "member-4:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-5-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1233",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 0,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "làm tới ID 11 rework",
+          "evidence": "",
+          "sourceIds": 0.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1233",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B7:F7"
+        }
+      ],
+      "completed": "",
+      "blockers": "làm tới ID 11 rework",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-5",
+    "date": "2026-10-20",
+    "natural_key": "member-5:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-5-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1233",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 720,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 12.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": null,
+          "taskIdInherited": true,
+          "sourceRange": "Tuan1!G7:K7"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-5",
+    "date": "2026-10-21",
+    "natural_key": "member-5:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-6-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1203",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1200,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "hôm nay chưa có",
+          "evidence": "",
+          "sourceIds": 20.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1203",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B8:F8"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-6",
+    "date": "2026-10-20",
+    "natural_key": "member-6:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-6-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1203",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1500,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "33,38 và 45 bị trùng người",
+          "evidence": "",
+          "sourceIds": 45.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1203",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G8:K8"
+        }
+      ],
+      "completed": "",
+      "blockers": "33,38 và 45 bị trùng người",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-6",
+    "date": "2026-10-21",
+    "natural_key": "member-6:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-7-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1285",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 180,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 3.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1285",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B9:F9"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-7",
+    "date": "2026-10-20",
+    "natural_key": "member-7:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-7-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1285",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1380,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 26.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1285",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G9:K9"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-7",
+    "date": "2026-10-21",
+    "natural_key": "member-7:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-8-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1255",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 300,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "Hiện chưa có",
+          "evidence": "",
+          "sourceIds": 5.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1255",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B10:F10"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-8",
+    "date": "2026-10-20",
+    "natural_key": "member-8:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-8-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1255",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1980,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "Frame 31 -> 32, pedestrian id 33 và pedestrian id 38 gán trùng 1 object, không rõ nên đánh id 33 hay id 38 outside.",
+          "evidence": "",
+          "sourceIds": 38.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1255",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G10:K10"
+        }
+      ],
+      "completed": "",
+      "blockers": "Frame 31 -> 32, pedestrian id 33 và pedestrian id 38 gán trùng 1 object, không rõ nên đánh id 33 hay id 38 outside.",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-8",
+    "date": "2026-10-21",
+    "natural_key": "member-8:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-9-2026-10-20",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-20",
+      "lines": [
+        {
+          "taskId": "import-task-1517",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 780,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "",
+          "evidence": "",
+          "sourceIds": 13.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1517",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!B11:F11"
+        }
+      ],
+      "completed": "",
+      "blockers": "",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-9",
+    "date": "2026-10-20",
+    "natural_key": "member-9:2026-10-20",
+    "status": "imported"
+  },
+  {
+    "id": "import-daily-member-9-2026-10-21",
+    "kind": "daily",
+    "data": {
+      "date": "2026-10-21",
+      "lines": [
+        {
+          "taskId": "import-task-1517",
+          "activity": "annotation",
+          "minutes": null,
+          "quantity": 1320,
+          "rework": null,
+          "quantityClassification": "net_daily_confirmed_by_lead",
+          "work": "Sản lượng theo KPI_Ngay (ID × frame)",
+          "issue": "ID 33 và các id pedestrian bị lẫn lộn với nhau, không thể phân biệt được",
+          "evidence": "",
+          "sourceIds": 35.0,
+          "sourceFrames": 60.0,
+          "sourceTaskId": "1517",
+          "taskIdInherited": false,
+          "sourceRange": "Tuan1!G11:K11"
+        }
+      ],
+      "completed": "",
+      "blockers": "ID 33 và các id pedestrian bị lẫn lộn với nhau, không thể phân biệt được",
+      "support": "",
+      "nextPlan": "",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587",
+      "sourceState": "Chưa duyệt",
+      "missingFields": [
+        "Thời gian thực tế"
+      ],
+      "quantityMethod": "Giá trị sản lượng ngày trong sheet; ngày 21/10 dùng (ID cộng dồn - ID ngày trước) × số frame, không cộng ID cộng dồn trực tiếp."
+    },
+    "owner_id": "member-9",
+    "date": "2026-10-21",
+    "natural_key": "member-9:2026-10-21",
+    "status": "imported"
+  },
+  {
+    "id": "import-task-1241",
+    "kind": "task",
+    "data": {
+      "code": "1241",
+      "title": "Annotation 3D Cuboid · Task 1241",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-1",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1241",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2040,
+      "reportedTotal": 2040,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1241:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1264",
+    "kind": "task",
+    "data": {
+      "code": "1264",
+      "title": "Annotation 3D Cuboid · Task 1264",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-2",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1264",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2340,
+      "reportedTotal": 2340,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1264:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1198",
+    "kind": "task",
+    "data": {
+      "code": "1198",
+      "title": "Annotation 3D Cuboid · Task 1198",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-3",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1198",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2280,
+      "reportedTotal": 2280,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1198:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1202",
+    "kind": "task",
+    "data": {
+      "code": "1202",
+      "title": "Annotation 3D Cuboid · Task 1202",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-4",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1202",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 780,
+      "reportedTotal": 780,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1202:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1233",
+    "kind": "task",
+    "data": {
+      "code": "1233",
+      "title": "Annotation 3D Cuboid · Task 1233",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-5",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1233",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 720,
+      "reportedTotal": 720,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1233:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1203",
+    "kind": "task",
+    "data": {
+      "code": "1203",
+      "title": "Annotation 3D Cuboid · Task 1203",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-6",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1203",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2700,
+      "reportedTotal": 2700,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1203:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1285",
+    "kind": "task",
+    "data": {
+      "code": "1285",
+      "title": "Annotation 3D Cuboid · Task 1285",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-7",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1285",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 1560,
+      "reportedTotal": 1560,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1285:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1255",
+    "kind": "task",
+    "data": {
+      "code": "1255",
+      "title": "Annotation 3D Cuboid · Task 1255",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-8",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1255",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2280,
+      "reportedTotal": 2280,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1255:",
+    "status": "doing"
+  },
+  {
+    "id": "import-task-1517",
+    "kind": "task",
+    "data": {
+      "code": "1517",
+      "title": "Annotation 3D Cuboid · Task 1517",
+      "projectId": "import-project-cuboid",
+      "assigneeId": "member-9",
+      "reviewerId": "member-0",
+      "link": "https://cvat-test.vantixapps.net/tasks/1517",
+      "assignedDate": "2026-10-20",
+      "assignedDateEstimated": true,
+      "deadline": null,
+      "priority": "normal",
+      "quantity": null,
+      "completed": 2100,
+      "reportedTotal": 2100,
+      "latestProductionDate": "2026-10-21",
+      "note": "Dữ liệu nhập từ sheet. Chưa có khối lượng giao và deadline. Lead cần bổ sung trước khi tiếp tục workflow. Người kiểm tra tạm giao Lead vì chưa chọn QA/QC.",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+    },
+    "project_id": "import-project-cuboid",
+    "natural_key": "1517:",
+    "status": "doing"
+  },
+  {
+    "id": "import-attendance-member-1-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B3",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-1",
+    "date": "2026-10-20",
+    "natural_key": "member-1:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-1-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F3",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-1",
+    "date": "2026-10-21",
+    "natural_key": "member-1:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-1-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J3",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-1",
+    "date": "2026-10-22",
+    "natural_key": "member-1:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-2-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B4",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-2",
+    "date": "2026-10-20",
+    "natural_key": "member-2:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-2-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F4",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-2",
+    "date": "2026-10-21",
+    "natural_key": "member-2:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-2-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J4",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-2",
+    "date": "2026-10-22",
+    "natural_key": "member-2:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-3-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B5",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-3",
+    "date": "2026-10-20",
+    "natural_key": "member-3:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-3-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F5",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-3",
+    "date": "2026-10-21",
+    "natural_key": "member-3:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-3-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J5",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-3",
+    "date": "2026-10-22",
+    "natural_key": "member-3:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-4-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B6",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-4",
+    "date": "2026-10-20",
+    "natural_key": "member-4:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-4-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F6",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-4",
+    "date": "2026-10-21",
+    "natural_key": "member-4:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-4-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J6",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-4",
+    "date": "2026-10-22",
+    "natural_key": "member-4:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-5-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B7",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-5",
+    "date": "2026-10-20",
+    "natural_key": "member-5:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-5-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F7",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-5",
+    "date": "2026-10-21",
+    "natural_key": "member-5:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-5-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J7",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-5",
+    "date": "2026-10-22",
+    "natural_key": "member-5:2026-10-22",
+    "status": "leave"
+  },
+  {
+    "id": "import-attendance-member-6-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B8",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-6",
+    "date": "2026-10-20",
+    "natural_key": "member-6:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-6-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 19.0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F8",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-6",
+    "date": "2026-10-21",
+    "natural_key": "member-6:2026-10-21",
+    "status": "late"
+  },
+  {
+    "id": "import-attendance-member-6-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 13.0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J8",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-6",
+    "date": "2026-10-22",
+    "natural_key": "member-6:2026-10-22",
+    "status": "late"
+  },
+  {
+    "id": "import-attendance-member-7-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B9",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-7",
+    "date": "2026-10-20",
+    "natural_key": "member-7:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-7-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F9",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-7",
+    "date": "2026-10-21",
+    "natural_key": "member-7:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-7-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J9",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-7",
+    "date": "2026-10-22",
+    "natural_key": "member-7:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-8-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B10",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-8",
+    "date": "2026-10-20",
+    "natural_key": "member-8:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-8-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F10",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-8",
+    "date": "2026-10-21",
+    "natural_key": "member-8:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-8-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J10",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-8",
+    "date": "2026-10-22",
+    "natural_key": "member-8:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-9-2026-10-20",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!B11",
+      "originalDate": "2026-10-20",
+      "dateCorrection": null
+    },
+    "owner_id": "member-9",
+    "date": "2026-10-20",
+    "natural_key": "member-9:2026-10-20",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-9-2026-10-21",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": "Đúng quy định",
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!F11",
+      "originalDate": "2026-11-21",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-9",
+    "date": "2026-10-21",
+    "natural_key": "member-9:2026-10-21",
+    "status": "present"
+  },
+  {
+    "id": "import-attendance-member-9-2026-10-22",
+    "kind": "attendance",
+    "data": {
+      "checkIn": null,
+      "checkOut": null,
+      "note": "",
+      "lateMinutes": 0,
+      "conduct": null,
+      "imported": true,
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "sourceRange": "'Diem danh va tac phong'!J11",
+      "originalDate": "2026-11-22",
+      "dateCorrection": "Ngày 21/11 và 22/11 được người dùng xác nhận sửa thành 21/10 và 22/10."
+    },
+    "owner_id": "member-9",
+    "date": "2026-10-22",
+    "natural_key": "member-9:2026-10-22",
+    "status": "present"
+  },
+  {
+    "id": "import-undated-weekly",
+    "kind": "legacy",
+    "data": {
+      "title": "2 ghi nhận rework chưa có tuần",
+      "source": "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+      "rows": [
+        {
+          "memberId": "member-4",
+          "cell": "'Bao cao tuan'!L11",
+          "reworkTasks": 1
+        },
+        {
+          "memberId": "member-5",
+          "cell": "'Bao cao tuan'!L12",
+          "reworkTasks": 1
+        }
+      ],
+      "note": "Nguồn chưa điền ngày bắt đầu tuần; giữ riêng, chưa cộng vào weekly report."
+    },
+    "status": "needs_date"
+  },
+  {
+    "id": "import-manifest",
+    "kind": "import",
+    "data": {
+      "title": "Nhập dữ liệu từ Google Sheets",
+      "sources": [
+        "https://docs.google.com/spreadsheets/d/1tB3LUSJmHs6ZwZ1V5lKsyUEtoZQUnY3i/edit?gid=1078651171",
+        "https://docs.google.com/spreadsheets/d/1QpNIXP0umu9pTgd6-JiX_uJRrx_OAzMq/edit?gid=905526587"
+      ],
+      "totals": {
+        "2026-10-20": 5520,
+        "2026-10-21": 11280
+      },
+      "reportCount": 18,
+      "taskCount": 9,
+      "attendanceCount": 27,
+      "notes": [
+        "Cầm Vũ Ngọc Thạch → Cẩm Vũ Ngọc Thạch; Phạm Nguyễn Tuấn → Phạm Nguyễn Tuân theo danh sách nhân sự người dùng.",
+        "Ngày điểm danh 21/11, 22/11 → 21/10, 22/10 theo xác nhận người dùng.",
+        "Tổng sản lượng từng ngày đã được Lead xác nhận trừ phần lỗi. QC thường vào sáng hôm sau; không tự tạo kết quả QC.",
+        "Báo cáo lịch sử chưa có thời gian thực tế, chưa được duyệt.",
+        "Không tạo dữ liệu cho các ô trống hoặc các tuần tương lai.",
+        "2 ghi nhận rework thiếu ngày tuần được giữ riêng.",
+        "Chưa nhập điểm Quality vì không có mẫu số kiểm tra."
+      ],
+      "issues": [
+        {
+          "memberId": "member-3",
+          "date": "2026-10-20",
+          "text": "frame 36 nhé bị nhảy objID 15 => 73\nvì ko quy định ko xóa ID và ID 15 vẫn ở đấy thì xử lý ntn",
+          "taskId": "import-task-1198"
+        },
+        {
+          "memberId": "member-4",
+          "date": "2026-10-20",
+          "text": "làm tới ID 17 rework 11h30 21/10",
+          "taskId": "import-task-1202"
+        },
+        {
+          "memberId": "member-5",
+          "date": "2026-10-20",
+          "text": "làm tới ID 11 rework",
+          "taskId": "import-task-1233"
+        },
+        {
+          "memberId": "member-6",
+          "date": "2026-10-21",
+          "text": "33,38 và 45 bị trùng người",
+          "taskId": "import-task-1203"
+        },
+        {
+          "memberId": "member-8",
+          "date": "2026-10-21",
+          "text": "Frame 31 -> 32, pedestrian id 33 và pedestrian id 38 gán trùng 1 object, không rõ nên đánh id 33 hay id 38 outside.",
+          "taskId": "import-task-1255"
+        },
+        {
+          "memberId": "member-9",
+          "date": "2026-10-21",
+          "text": "ID 33 và các id pedestrian bị lẫn lộn với nhau, không thể phân biệt được",
+          "taskId": "import-task-1517"
+        }
+      ]
+    },
+    "status": "completed"
+  }
+]
