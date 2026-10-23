@@ -22,7 +22,7 @@ export function qcClearedThrough(records:Row[],taskId:string){
 export function qcJobState(records:Row[],assignment:Row,day:string){
  const task=records.find(r=>r.kind==="task"&&r.id===assignment.task_id),source=qcJobSource(records,assignment.task_id!,assignment.data.assigneeId,day);
  const sessions=records.filter(r=>r.kind==="qc-session"&&r.task_id===assignment.task_id).sort((a,b)=>b.updated_at.localeCompare(a.updated_at));
- const active=sessions.find(r=>r.status==="in_progress"),last=sessions.find(r=>r.status==="completed")||sessions[0],through=qcClearedThrough(records,assignment.task_id!),endId=source?.line.endId||"",pending=pendingQcErrors(records,assignment.task_id!);
+ const active=sessions.find(r=>r.status==="in_progress"),last=sessions.find(r=>r.id===assignment.data.lastSessionId&&r.status==="completed")||sessions.find(r=>r.status==="completed")||sessions[0],through=qcClearedThrough(records,assignment.task_id!),endId=source?.line.endId||"",pending=pendingQcErrors(records,assignment.task_id!);
  let rangeStart=BigInt(through)>BigInt(0)?through:endId==="0"?"0":"1";
  if(endId&&BigInt(rangeStart)>BigInt(endId))rangeStart=endId==="0"?"0":"1";
  const canStart=!!source&&!active&&(BigInt(endId)>BigInt(through)||pending.length>0||source.report.status!=="approved");

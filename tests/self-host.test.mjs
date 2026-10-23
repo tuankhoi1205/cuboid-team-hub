@@ -4,6 +4,7 @@ import { mkdtemp, writeFile, readFile } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { execFileSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
+import {packBackup,unpackBackup,inspectBackup} from "../self-host/repo-backup.mjs";
 process.env.HUB_NO_LISTEN="1";
 const buildDir=resolve(process.env.HUB_TEST_BUILD_DIR||"self-host/dist");
 const {createLocalApp}=await import((await import("node:url")).pathToFileURL(join(buildDir,"server/server.mjs")).href);
@@ -209,4 +210,62 @@ test("Lead can supplement manual rework and backups preserve manual entries and 
   const login=await f.req("/api/auth/login",{method:"POST",body:{username:"26ai.minhnt3",password:memberPassword}});assert.equal(login.status,200);
   const mine=await(await f.req("/api/hub/state",{cookie:cookie(login)})).json();assert.ok(mine.records.some(r=>r.id===created.id));
  }finally{await f.close();}
+});
+
+test("one QC Job assignment is authorized, advances from yesterday's report, and survives backup restore",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-24T01:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),other=await activate(f,await invite(f,lead,8,"QA/QC"));
+  const post=async(action,body,session=lead)=>f.req("/api/hub/"+action,{method:"POST",cookie:session,body});
+  const created=async(action,body,session=lead)=>{const response=await post(action,body,session);assert.equal(response.status,200,await response.clone().text());return(await response.json()).id;};
+  const projectId=await created("project",{name:"Rolling HTTP QC",unit:"cuboid"}),taskId=await created("task",{jobId:"7654321",frameCount:60,title:"Rolling HTTP",projectId,assigneeId:"member-1",reviewerId:"member-2",assignedDate:"2026-10-22",deadline:"2026-10-30",priority:"normal",quantity:10000});
+  const report=(date,endId,idCount)=>({memberId:"member-1",date,submit:true,lines:[{taskId,idCount,endId,minutes:240,quantity:0,rework:0}]});
+  const sourceId=await created("daily",report("2026-10-22","20",20));
+  const assignmentBody={taskId,reviewerId:"member-2",frameCount:60},assignmentId=await created("qc-job-assign",assignmentBody);
+  assert.equal(await created("qc-job-assign",assignmentBody),assignmentId);
+  assert.equal((await post("qc-job-assign",assignmentBody,ann)).status,403);
+  assert.equal((await post("qc-job-start",{id:assignmentId},other)).status,403);
+  assert.equal((await post("qc-job-start",{id:assignmentId},ann)).status,403);
+  const checks=(from,to)=>Array.from({length:to-from+1},(_,i)=>({objectId:String(from+i),result:"passed",description:"",frameId:"",type:"Sai vị trí",severity:"minor"}));
+  const first=await created("qc-job-start",{id:assignmentId},qa);assert.equal(await created("qc-job-start",{id:assignmentId},qa),first);
+  await created("qc-result",{id:first,idChecks:checks(1,20)},qa);assert.equal((await f.app.hub.get(sourceId)).status,"approved");
+  const latestId=await created("daily",report("2026-10-23","80",60));await created("daily",report("2026-10-24","100",20));
+  const second=await created("qc-job-start",{id:assignmentId},qa),cycle=await f.app.hub.get(second);
+  assert.equal(cycle.data.rangeStart,"20");assert.equal(cycle.data.endId,"80");assert.equal(cycle.data.sourceReportId,latestId);
+  const qaState=await(await f.req("/api/hub/state",{cookie:qa})).json(),annState=await(await f.req("/api/hub/state",{cookie:ann})).json();
+  for(const state of [qaState,annState])assert.equal(state.records.filter(r=>r.kind==="qc-assignment"&&r.task_id===taskId).length,1);
+  const otherState=await(await f.req("/api/hub/state",{cookie:other})).json();assert.ok(!otherState.records.some(r=>r.id===assignmentId));
+  await created("qc-result",{id:second,idChecks:checks(20,80)},qa);assert.equal((await f.app.hub.get(latestId)).status,"approved");
+  const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(snapshot.records.some(r=>r.id===assignmentId&&r.kind==="qc-assignment"));
+  const restored=await post("restore",{confirm:"KHOI PHUC",snapshot});assert.equal(restored.status,200,await restored.clone().text());
+  const saved=await f.app.hub.rows();assert.equal(saved.filter(r=>r.kind==="qc-assignment"&&r.task_id===taskId).length,1);assert.equal(saved.filter(r=>r.kind==="qc-session"&&r.task_id===taskId).length,2);
+ }finally{await f.close();}
+});
+
+test("encrypted repository backup restores business data, uploaded files and passwords without exposing credentials or sessions",async()=>{
+ const f=await fixture();let restored;
+ try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1));
+  const form=new FormData();form.set("entityId","import-task-1241");form.set("file",new File(["Private backup file"],"repository-backup.txt"));
+  assert.equal((await f.req("/api/hub/upload",{method:"POST",cookie:ann,body:form})).status,200);
+  const originalRecords=await f.app.hub.rows(),evidence=originalRecords.find(r=>r.kind==="file"),digest=f.app.store.sql.prepare("SELECT password_hash FROM auth_credentials WHERE member_id='member-0'").get().password_hash;
+  const output=execFileSync(process.execPath,[resolve("self-host/admin.mjs"),"backup"],{env:{...process.env,HUB_DATA_DIR:f.dir},encoding:"utf8",timeout:15000}),backupDir=output.trim().replace(/^Full backup saved: /,"");
+  const archiveFile=join(f.dir,"team.enc"),keyFile=join(f.dir,"key.json");
+  const info=await packBackup({backupDir,archiveFile,keyFile});assert.equal(info.summary.members,10);assert.equal(info.summary.dailyReports,18);assert.equal(info.summary.uploadedFiles,1);
+  assert.deepEqual(await inspectBackup(archiveFile),info);
+  const encrypted=await readFile(archiveFile);for(const secret of [digest,leadPassword,memberPassword,"Private backup file","26ai.khoint2@vinuni.edu.vn"])assert.ok(!encrypted.includes(Buffer.from(secret)));
+  const wrongKey=join(f.dir,"wrong-key.json");await writeFile(wrongKey,JSON.stringify({format:"cuboid-repo-key-v1",key:Buffer.alloc(32,7).toString("base64")}));
+  await assert.rejects(()=>unpackBackup({archiveFile,keyFile:wrongKey,backupRoot:join(f.dir,"wrong-key-output")}),/does not match/);
+  const tampered=Buffer.from(encrypted);tampered[tampered.length-1]^=1;const changed=join(f.dir,"tampered.enc");await writeFile(changed,tampered);
+  await assert.rejects(()=>unpackBackup({archiveFile:changed,keyFile,backupRoot:join(f.dir,"tampered-output")}));
+  const target=await unpackBackup({archiveFile,keyFile,backupRoot:join(f.dir,"recovered")});
+  restored=await createLocalApp({dataDir:target,publicDir:join(buildDir,"client")});
+  assert.deepEqual(await restored.hub.rows(),originalRecords);assert.equal(restored.store.sql.prepare("SELECT COUNT(*) n FROM auth_sessions").get().n,0);assert.equal(restored.store.sql.prepare("SELECT COUNT(*) n FROM auth_tokens").get().n,0);
+  assert.equal(await restored.auth.current(new Request(origin,{headers:{Cookie:lead}})),null);
+  assert.ok((await restored.auth.login("26ai.khoint2",leadPassword,"test-encrypted-backup")).token);assert.ok((await restored.auth.login("26ai.minhnt3",memberPassword,"test-encrypted-member")).token);
+  const download=await restored.handle(new Request(origin+"/api/hub/file/"+evidence.id,{headers:{Cookie:"cuboid_session="+restored.auth.session("member-1")}}));assert.equal(download.status,200);assert.equal(await download.text(),"Private backup file");
+  const preserved=await restored.hub.rows();
+  assert.throws(()=>execFileSync(process.execPath,[resolve("self-host/repo-backup.mjs"),"restore-new",archiveFile,keyFile],{env:{...process.env,HUB_DATA_DIR:target},encoding:"utf8",stdio:["ignore","pipe","pipe"]}),/Database already exists/);assert.deepEqual(await restored.hub.rows(),preserved);
+  const fresh=join(f.dir,"fresh-host");execFileSync(process.execPath,[resolve("self-host/repo-backup.mjs"),"restore-new",archiveFile,keyFile],{env:{...process.env,HUB_DATA_DIR:fresh},encoding:"utf8",timeout:15000});
+  const freshDb=new DatabaseSync(join(fresh,"cuboid.sqlite"),{readOnly:true});try{assert.equal(freshDb.prepare("SELECT COUNT(*) n FROM records").get().n,originalRecords.length);assert.equal(freshDb.prepare("SELECT password_hash FROM auth_credentials WHERE member_id='member-0'").get().password_hash,digest);}finally{freshDb.close();}
+ }finally{if(restored)await restored.close();await f.close();}
 });

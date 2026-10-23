@@ -22,6 +22,14 @@ QC Ngọc Hòa (Job 1514) đã được cập nhật trực tiếp tới ID 80 t
 
 Phân công QC bản mới theo Job, giao một lần (`qc-assignment`). Mỗi lượt kiểm vẫn lưu lịch sử riêng, tự lấy ID cuối của Daily Report gần nhất trước hôm nay; mốc tiếp theo từ ID đã QC và sửa xong, ví dụ 20 → 80. Phân công cũ tự gộp theo Job khi bản mới chạy, không xóa log/lượt cũ.
 
-## Tạm dừng theo yêu cầu của Khôi
+## Tiếp tục hoàn thiện ngày 24/10/2026
 
-Đã lưu toàn bộ mã nguồn. Chưa deploy, chưa đổi hạn Daily Report trên DB thật. Kiểm thử mới nhất: 44 domain tests đạt, TypeScript đạt. 12 kiểm thử HTTP đã đạt trước thay đổi phân công QC một lần; cần build riêng và chạy lại HTTP/UI cho phần QC theo Job khi tiếp tục. Bản preview cổng 43210 đã được yêu cầu dừng; giữ nguyên app/tunnel production.
+Đã tiếp tục sau khi Khôi yêu cầu. Phân công một lần theo Job đã qua 44 kiểm thử nghiệp vụ, 13 kiểm thử HTTP và TypeScript. Kiểm thử HTTP mới xác minh quyền Lead/QA/annotator, cùng một phân công qua các lượt, tự lấy báo cáo hôm qua, bỏ qua báo cáo hôm nay, và bảo toàn phân công khi sao lưu/khôi phục.
+
+Giao diện kiểm thử riêng đã xác minh: mốc 20 → 80; lưu nháp rồi tải lại vẫn giữ kết quả từng ID; hoàn tất có lỗi ở ID 21; annotator xem log, xác nhận sửa, báo cáo được tự duyệt và lượng cần sửa trở về 0. Bổ sung bảng lịch sử toàn bộ lượt QC, nút xem log mới nhất, số log chờ kiểm lại và cột frame trong Excel QC.
+
+**Vẫn chưa deploy** theo yêu cầu giữ bản cũ để team nhập xong KPI. Hash server và index client production vẫn trùng bản trước khi sửa. Cần sao lưu dữ liệu đang chạy trước khi triển khai; không chép DB kiểm thử vào dữ liệu thật.
+
+Đã build lại bản cuối vào `.sites-runtime/staged-selfhost`; kiểm thử QC HTTP và sao lưu/khôi phục chạy lại đều đạt sau bổ sung Excel. Bản preview 43210 đã dừng khi kết thúc kiểm tra. Ảnh kiểm thử: `outputs/qc-job-history-staged-2026-10-24.png` (dữ liệu mẫu riêng).
+
+Theo yêu cầu push GitHub, đã bổ sung snapshot đầy đủ mã hóa tại `data/team-backup.cuboid.enc` và công cụ `self-host/repo-backup.mjs`. Repo hiện Public nên DB thô/khóa giải mã không được commit. Snapshot gồm 10 tài khoản, 33 Daily Report, 127 bản ghi và 1 tệp; đã giải mã kiểm tra integrity thành công. 14 kiểm thử HTTP/sao lưu đều đạt, gồm khôi phục dữ liệu, tệp và mật khẩu, chặn khóa sai/bản mã bị sửa và từ chối ghi đè DB đang có. Push GitHub không thay bản build hoặc khởi động lại server.

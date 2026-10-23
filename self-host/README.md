@@ -37,6 +37,8 @@ Mở `StopHub.cmd` để dừng cả ứng dụng và tunnel. Tệp dữ liệu 
 
 ## Dữ liệu và sao lưu
 
+GitHub chỉ theo dõi mã nguồn và các tệp được commit; DB đang chạy được bỏ qua trong `.gitignore`. Bản sao trên GitHub ở `data/team-backup.cuboid.enc`, đã mã hóa AES-256-GCM. Khóa giải mã ở `.runtime/repo-backup-key.json`, giữ riêng trên máy và không commit. Mở `BackupGitHub.cmd` hoặc chạy `node self-host/repo-backup.mjs export` từ gốc repo để xuất bản mới, rồi commit/push hai tệp `data/team-backup.cuboid.enc*`. Xem [cách khôi phục từ GitHub](../README.md#khôi-phục-dữ-liệu-từ-github). Đây là snapshot, chưa tự đồng bộ các báo cáo phát sinh sau thời điểm xuất.
+
 `data/cuboid.sqlite` lưu nghiệp vụ và tài khoản. `data/files` lưu tệp minh chứng. Dữ liệu Sheets đã nhập một lần: 10 nhân sự, 9 task, 18 daily report, 27 bản ghi điểm danh. Tổng sản lượng 20/10/2026 là **5.520**, 21/10/2026 là **11.280 cuboid**; đã sửa tháng điểm danh theo xác nhận của Khôi. Chưa có đồng bộ Sheets tự động.
 
 Chạy **BackupHub.cmd** để sao lưu đầy đủ vào `data/backups/<thời-điểm>/`: SQLite, giá trị băm mật khẩu và các tệp minh chứng. Bản sao không chứa phiên đăng nhập hoặc token kích hoạt/khôi phục còn dùng được. Lưu thêm một bản ở thiết bị riêng; bản sao nằm cùng ổ đĩa không bảo vệ khi ổ đĩa hỏng. Thư mục sao lưu chứa dữ liệu nội bộ, cần giữ riêng tư.

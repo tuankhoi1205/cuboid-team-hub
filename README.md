@@ -2,6 +2,44 @@
 
 Bản đang sử dụng chạy độc lập trên máy Windows hiện tại. Mở **self-host/StartHub.cmd**; đăng nhập bằng tên được cấp và mật khẩu riêng. Xem [hướng dẫn tự host](self-host/README.md) và [hướng dẫn nghiệp vụ cho Lead](HUONG_DAN_LEAD.md).
 
+## Dữ liệu trên GitHub
+
+DB hoạt động nằm ở `self-host/data/cuboid.sqlite`; các tệp đính kèm ở `self-host/data/files`. Git bỏ qua thư mục dữ liệu đang chạy, nên chỉ push code sẽ không có các báo cáo, điểm danh, phân công và log mới.
+
+Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **24/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 33 Daily Report, 127 bản ghi nghiệp vụ và 1 tệp đính kèm**. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
+
+**Khóa giải mã lưu riêng trên máy host:** `self-host/.runtime/repo-backup-key.json`. Khóa không được commit. Lưu thêm một bản khóa ở nơi riêng để có thể khôi phục khi chuyển máy; file mã hóa trên GitHub cần khóa này để mở.
+
+Đây là snapshot tại lúc sao lưu, chưa có đồng bộ DB tự động. Tạo snapshot mới từ thư mục gốc repo:
+
+```powershell
+node self-host/repo-backup.mjs export
+git add data/team-backup.cuboid.enc data/team-backup.cuboid.enc.json
+git commit -m "Update encrypted team data snapshot"
+git push origin main
+```
+
+Cũng có thể mở `self-host/BackupGitHub.cmd` để tạo snapshot trước khi commit/push.
+
+## Khôi phục dữ liệu từ GitHub
+
+Trên **máy mới, chưa có DB**: clone repo, cài Node.js 24, chép riêng khóa vào `self-host/.runtime/repo-backup-key.json`, rồi chạy:
+
+```powershell
+npm ci
+node self-host/repo-backup.mjs restore-new
+node self-host/build.mjs
+.\self-host\StartHub.cmd
+```
+
+`restore-new` từ chối ghi đè DB hoặc tệp đã có. Sau khôi phục, đăng nhập bằng mật khẩu tại thời điểm sao lưu. Khóa giải mã không phải mật khẩu đăng nhập ứng dụng.
+
+Trên **máy đã có DB**: chạy `node self-host/repo-backup.mjs unpack` để giải mã thành một bản sao trong `self-host/data/backups/github-restored-*`. Sau đó dùng quy trình [khôi phục đầy đủ](self-host/README.md#dữ-liệu-và-sao-lưu): dừng server, chạy `node self-host/admin.mjs restore "<thư mục vừa giải mã>" KHOI_PHUC`, rồi mở lại server. Giải mã và push không tự triển khai mã mới hoặc thay dữ liệu đang chạy.
+
+Mã mới đang [chờ triển khai](PENDING_DEPLOY.md) theo yêu cầu của Lead. Giữ bản build đang phục vụ khi team đang nhập KPI.
+
+---
+
 Phần dưới đây là tài liệu của starter Sites được giữ lại để tham khảo mã nguồn cũ. Không cần Sites/ChatGPT để chạy bản trong `self-host`.
 
 # vinext-starter

@@ -47,3 +47,10 @@ yarn-error.log*
 /self-host/data/
 /self-host/.runtime/
 /self-host/node_modules/
+
+# Live databases and decryption keys stay local. Only encrypted snapshots enter Git.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+**/repo-backup-key*.json
+/data/*.tmp
