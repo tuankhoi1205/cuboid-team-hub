@@ -43,3 +43,7 @@ yarn-error.log*
 
 # OS metadata
 .DS_Store
+/self-host/dist/
+/self-host/data/
+/self-host/.runtime/
+/self-host/node_modules/

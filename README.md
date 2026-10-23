@@ -1,3 +1,9 @@
+# Cuboid Team Hub
+
+Bản đang sử dụng chạy độc lập trên máy Windows hiện tại. Mở **self-host/StartHub.cmd**; đăng nhập bằng tên được cấp và mật khẩu riêng. Xem [hướng dẫn tự host](self-host/README.md) và [hướng dẫn nghiệp vụ cho Lead](HUONG_DAN_LEAD.md).
+
+Phần dưới đây là tài liệu của starter Sites được giữ lại để tham khảo mã nguồn cũ. Không cần Sites/ChatGPT để chạy bản trong `self-host`.
+
 # vinext-starter
 
 A clean full-stack starter running on [vinext](https://github.com/cloudflare/vinext), with optional Cloudflare D1 and Drizzle support.
