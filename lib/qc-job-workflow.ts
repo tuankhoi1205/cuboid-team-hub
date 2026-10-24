@@ -4,6 +4,7 @@ import {qcJobState} from "./qc-jobs.ts";
 import {reportQcKey} from "./report-qc.ts";
 import {taskFrameCount} from "./task-frames.ts";
 import {reportEndId} from "./report-progress.ts";
+import {basicQcState} from "./qc-basic.ts";
 const id=z.string().min(1).max(200),frames=z.coerce.number().int().positive().max(100000000).nullable().optional();
 
 export async function ensureQcAssignments(hub:Hub){
@@ -31,6 +32,7 @@ export async function qcJobAction(hub:Hub,m:Member,action:string,b:any){
   const rows=await hub.rows(),state=qcJobState(rows,assignment,today(hub.now));if(state.active)return{ok:true,id:state.active.id};
   ensure(state.task&&state.task.data.assigneeId===assignment.data.assigneeId,"Người làm Job đã đổi; Lead cần cập nhật phân công",409);ensure(state.source,"Chưa có Daily Report của ngày trước để QC");
   ensure(state.canStart,"Chưa có ID mới hoặc lỗi cần kiểm lại cho Job này",409);
+  ensure(basicQcState(rows,assignment).canDetail,"Hoàn tất kiểm tra cơ bản bằng Tool_QC một lần trước khi QC chi tiết",409);
   const {report,line}=state.source,endId=line.endId,rangeStart=data.rangeStart||state.rangeStart;
   ensure(/^\d+$/.test(rangeStart)&&BigInt(rangeStart)<=BigInt(endId),"ID bắt đầu phải nhỏ hơn hoặc bằng ID cuối");
   const sessionId=crypto.randomUUID(),task=state.task,pending=state.pending;

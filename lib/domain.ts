@@ -102,6 +102,7 @@ export class Hub {
       if(r.kind==="manual-rework")return r.owner_id===m.id?[r]:[];
       if (r.kind === "target") return r.owner_id === m.id ? [r] : [];
       if(["qc-session","qc-assignment"].includes(r.kind))return r.data.assigneeId===m.id||(m.role==="QA/QC"&&r.data.reviewerId===m.id)?[r]:[];
+      if(r.kind==="qc-basic")return r.owner_id===m.id||m.role==="QA/QC"&&taskIds.has(r.task_id||"")?[r]:[];
       if (["review", "comment"].includes(r.kind)) return taskIds.has(r.task_id || "") ? [r] : [];
       if (r.kind === "daily") {
         if (r.owner_id === m.id) return [r];

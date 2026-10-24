@@ -4,6 +4,8 @@ import {Plus,X,Play} from "lucide-react";
 import type {Row} from "../lib/domain";
 import {qcJobState} from "../lib/qc-jobs";
 import {taskFrameCount} from "../lib/task-frames";
+import BasicQcStep from "./qc-basic-step";
+import {basicQcState} from "../lib/qc-basic";
 const date=(v:string|null|undefined)=>v?v.split("-").reverse().join("/"):"—";
 export default function QcJobQueue({records,members,me,today,memberFilter,reviewerFilter,onChanged,onOpen}:{records:Row[];members:any[];me:any;today:string;memberFilter:string;reviewerFilter:string;onChanged:()=>Promise<void>;onOpen:(mode:"result"|"log",id:string)=>void}){
  const lead=me.role==="Lead",tasks=records.filter(r=>r.kind==="task"),assignments=records.filter(r=>r.kind==="qc-assignment"&&r.status==="active");
@@ -16,13 +18,13 @@ export default function QcJobQueue({records,members,me,today,memberFilter,review
   const response=await fetch("/api/hub/"+action,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}),value:any=await response.json();if(!response.ok)throw new Error(value.error);await onChanged();setModal(null);if(action==="qc-job-start")onOpen("result",value.id);
  }catch(e){setError(e instanceof Error?e.message:"Không lưu được");}finally{setBusy(false);}}
  return <>
-  <section className="panel"><div className="panel-head"><div><h3>Phân công QC theo Job</h3><p>Giao một lần. ID cuối tự lấy từ Daily Report gần nhất đã gửi trước hôm nay; tiếp tục từ mốc đã QC và sửa xong.</p></div>{lead&&<button className="btn primary small-btn" onClick={()=>assign()}><Plus size={14}/>Giao QC cho Job</button>}</div>
-   <div className="table-scroll"><table><thead><tr>{["Task / Job","Annotator","Người QC","QC và sửa xong tới","ID cuối theo báo cáo","Phần QC tiếp theo","Trạng thái",""] .map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
+  <section className="panel"><div className="panel-head"><div><h3>Phân công QC theo Job</h3><p>Giao một lần. Bước 1 chạy Tool_QC lần đầu; bước 2 kiểm chi tiết theo ID của báo cáo hôm qua.</p></div>{lead&&<button className="btn primary small-btn" onClick={()=>assign()}><Plus size={14}/>Giao QC cho Job</button>}</div>
+   <div className="table-scroll"><table><thead><tr>{["Task / Job","Annotator","Người QC","QC và sửa xong tới","ID cuối theo báo cáo","Phần QC tiếp theo","1 · Kiểm tra cơ bản","2 · QC chi tiết",""] .map(h=><th key={h}>{h}</th>)}</tr></thead><tbody>
     {assignments.filter(a=>(!memberFilter||a.data.assigneeId===memberFilter)&&(!reviewerFilter||a.data.reviewerId===reviewerFilter)).map(a=>{
-     const s=qcJobState(records,a,today),canCheck=lead||me.role==="QA/QC"&&a.data.reviewerId===me.id;
-     return <tr key={a.id}><td><b>Task {s.task?.data.code||"—"} · Job {s.task?.data.jobId||"—"}</b><small>{taskFrameCount(s.task)??"Chưa nhập số"} frame</small></td><td>{name(a.data.assigneeId)}</td><td>{name(a.data.reviewerId)}</td><td>ID {s.through}<small>{s.pending.filter(p=>!p.fixed).length} log còn cần sửa</small>{s.pending.some(p=>p.fixed)&&<small>{s.pending.filter(p=>p.fixed).length} log chờ kiểm lại</small>}</td><td>{s.endId?"ID "+s.endId:"Chờ Daily Report"}<small>{s.source?"Báo cáo "+date(s.source.report.date):"Chưa có báo cáo ngày trước"}</small></td><td>{s.active?<>{s.active.data.rangeStart||"1"} → {s.active.data.endId}<small>Phạm vi lượt đang QC</small></>:s.source?<>{s.rangeStart} → {s.endId}</>:"—"}</td><td><span className={"badge "+(s.active?"b-doing":s.canStart?"b-todo":"b-approved")}>{s.active?"Đang QC":!s.source?"Chờ báo cáo":s.canStart?"Có phần cần QC":"Đã QC / sửa xong"}</span></td><td><div className="qc-row-actions">
+     const s=qcJobState(records,a,today),basic=basicQcState(records,a),canCheck=lead||me.role==="QA/QC"&&a.data.reviewerId===me.id;
+     return <tr key={a.id}><td><b>Task {s.task?.data.code||"—"} · Job {s.task?.data.jobId||"—"}</b><small>{taskFrameCount(s.task)??"Chưa nhập số"} frame</small></td><td>{name(a.data.assigneeId)}</td><td>{name(a.data.reviewerId)}</td><td>ID {s.through}<small>{s.pending.filter(p=>!p.fixed).length} log còn cần sửa</small>{s.pending.some(p=>p.fixed)&&<small>{s.pending.filter(p=>p.fixed).length} log chờ kiểm lại</small>}</td><td>{s.endId?"ID "+s.endId:"Chờ Daily Report"}<small>{s.source?"Báo cáo "+date(s.source.report.date):"Chưa có báo cáo ngày trước"}</small></td><td>{s.active?<>{s.active.data.rangeStart||"1"} → {s.active.data.endId}<small>Phạm vi lượt đang QC</small></>:s.source?<>{s.rangeStart} → {s.endId}</>:"—"}</td><td><BasicQcStep assignment={a} records={records} me={me} onChanged={onChanged} onContinue={()=>{if(s.canStart)start(a);}}/></td><td><span className={"badge "+(s.active?"b-doing":s.canStart?"b-todo":"b-approved")}>{s.active?"Đang QC":!s.source?"Chờ báo cáo":s.canStart?"Có phần cần QC":"Đã QC / sửa xong"}</span></td><td><div className="qc-row-actions">
       {canCheck&&s.active&&<button className="btn primary small-btn" onClick={()=>onOpen("result",s.active!.id)}>Ghi kết quả</button>}
-      {canCheck&&s.canStart&&<button className="btn primary small-btn" onClick={()=>start(a)}><Play size={13}/>Bắt đầu QC</button>}
+      {canCheck&&s.canStart&&basic.canDetail&&<button className="btn primary small-btn" onClick={()=>start(a)}><Play size={13}/>Bắt đầu QC</button>}
       {s.last&&<button className="text-link" onClick={()=>onOpen("log",s.last!.id)}>Xem log</button>}
       {lead&&<button className="text-link" onClick={()=>assign(a)}>Sửa phân công</button>}
      </div></td></tr>;

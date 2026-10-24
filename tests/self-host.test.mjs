@@ -22,6 +22,10 @@ async function fixture(options={}) {
 async function setupLead(f) {const r=await f.req("/api/auth/setup",{method:"POST",cookie:f.boot,body:{password:leadPassword}});assert.equal(r.status,200,await r.clone().text());return cookie(r);}
 async function invite(f,lead,number,role="Annotator") {const m=(await f.app.hub.members()).find(m=>m.id==="member-"+number);const response=await f.req("/api/hub/member",{method:"POST",cookie:lead,body:{...m,role,state:"invited"}});assert.equal(response.status,200);const d=await response.json();return new URL(d.invitationUrl).searchParams.get("token");}
 async function activate(f,token,password=memberPassword) {const r=await f.req("/api/auth/activate",{method:"POST",body:{token,password}});assert.equal(r.status,200,await r.clone().text());return cookie(r);}
+function basicDataset(){const box=(id,track,position,scale=[4,2,1.7],rotation=[0,0,0],extra={})=>({id,type:"cuboid_3d",label_id:0,position,scale,rotation,attributes:{...(track!==null?{track_id:track}:{}),...extra}});return{dm_format_version:"1.0",categories:{label:{labels:[{name:"vehicle"}]}},items:[{id:"frame_000000",attr:{frame:0},annotations:[box(1,0,[0,0,0]),box(2,1,[0.1,0,0]),box(3,2,[150,0,5],[20,20,20],[0,0,0],{outside:true}),box(4,null,[50,0,0])]},{id:"frame_000001",attr:{frame:1},annotations:[box(5,0,[101,0,4],[6,2,1.7],[0,0,Math.PI])]}]};}
+async function basicRun(f,session,assignmentId,{content=JSON.stringify(basicDataset()),name="datumaro.json",reason=""}={}){const body=new FormData();body.set("assignmentId",assignmentId);body.set("trackOffset","1");body.set("reason",reason);body.set("file",new File([content],name));return f.req("/api/hub/qc-basic/run",{method:"POST",cookie:session,body});}
+async function waitBasic(f,id){for(let i=0;i<300;i++){const run=await f.app.hub.get(id);if(run.status!=="running")return run;await new Promise(r=>setTimeout(r,30));}assert.fail("Basic QC did not finish within nine seconds");}
+async function finishBasic(f,qa,assignmentId){const response=await basicRun(f,qa,assignmentId);assert.equal(response.status,202,await response.clone().text());const run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);const done=await f.req("/api/hub/qc-basic/complete",{method:"POST",cookie:qa,body:{id:run.id,reviewed:true,note:"Đã đối chiếu kết quả tool"}});assert.equal(done.status,200,await done.clone().text());return run;}
 
 test("local-only Lead setup, password hashing, login, session rotation and logout",async()=>{
  const f=await fixture();try{
@@ -226,6 +230,7 @@ test("one QC Job assignment is authorized, advances from yesterday's report, and
   assert.equal((await post("qc-job-start",{id:assignmentId},other)).status,403);
   assert.equal((await post("qc-job-start",{id:assignmentId},ann)).status,403);
   const checks=(from,to)=>Array.from({length:to-from+1},(_,i)=>({objectId:String(from+i),result:"passed",description:"",frameId:"",type:"Sai vị trí",severity:"minor"}));
+  assert.equal((await post("qc-job-start",{id:assignmentId},qa)).status,409);await finishBasic(f,qa,assignmentId);
   const first=await created("qc-job-start",{id:assignmentId},qa);assert.equal(await created("qc-job-start",{id:assignmentId},qa),first);
   await created("qc-result",{id:first,idChecks:checks(1,20)},qa);assert.equal((await f.app.hub.get(sourceId)).status,"approved");
   const latestId=await created("daily",report("2026-10-23","80",60));await created("daily",report("2026-10-24","100",20));
@@ -238,6 +243,43 @@ test("one QC Job assignment is authorized, advances from yesterday's report, and
   const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(snapshot.records.some(r=>r.id===assignmentId&&r.kind==="qc-assignment"));
   const restored=await post("restore",{confirm:"KHOI PHUC",snapshot});assert.equal(restored.status,200,await restored.clone().text());
   const saved=await f.app.hub.rows();assert.equal(saved.filter(r=>r.kind==="qc-assignment"&&r.task_id===taskId).length,1);assert.equal(saved.filter(r=>r.kind==="qc-session"&&r.task_id===taskId).length,2);
+ }finally{await f.close();}
+});
+
+test("Tool_QC checks the supplied six rules, separates outside boxes from KPI, and gates detailed QC only once",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-24T01:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),other=await activate(f,await invite(f,lead,8,"QA/QC"));
+  const source=(await f.app.hub.rows("daily")).find(r=>r.owner_id==="member-1"&&r.date==="2026-10-21"),taskId=source.data.lines[0].taskId;
+  const assigned=await f.req("/api/hub/qc-job-assign",{method:"POST",cookie:lead,body:{taskId,reviewerId:"member-2"}});assert.equal(assigned.status,200);const assignmentId=(await assigned.json()).id;
+  const before=(await f.app.hub.rows()).filter(r=>["daily","review","manual-rework"].includes(r.kind));
+  assert.equal((await basicRun(f,ann,assignmentId)).status,403);assert.equal((await basicRun(f,other,assignmentId)).status,403);
+  const started=await basicRun(f,qa,assignmentId);assert.equal(started.status,202,await started.clone().text());const id=(await started.json()).id;
+  assert.equal((await basicRun(f,qa,assignmentId)).status,409);const run=await waitBasic(f,id);assert.equal(run.status,"ready",run.data.error);
+  assert.equal(run.data.summary.outsideCuboids,1);assert.equal(run.data.summary.cuboids,4);for(const key of ["scale","size","z","rot","overlap","dist","data"])assert.ok(run.data.summary.counts[key]>0,key);
+  assert.deepEqual((await f.app.hub.rows()).filter(r=>["daily","review","manual-rework"].includes(r.kind)),before);
+  const result=await f.req("/api/hub/qc-basic/result?id="+id,{cookie:qa});assert.equal(result.status,200);assert.ok((await result.json()).rows.some(r=>r.track==="1"));
+  const outside=await(await f.req("/api/hub/qc-basic/result?id="+id+"&track=3",{cookie:ann})).json();assert.equal(outside.total,0);
+  const distance=await(await f.req("/api/hub/qc-basic/result?id="+id+"&check=dist&frame=1",{cookie:qa})).json();assert.equal(distance.total,1);assert.equal(distance.rows[0].track,"1");
+  assert.equal((await f.req("/api/hub/qc-basic/result?id="+id,{cookie:other})).status,403);assert.equal((await f.req("/api/hub/file/"+run.data.excelFileId,{cookie:other})).status,403);
+  const excel=await f.req("/api/hub/file/"+run.data.excelFileId,{cookie:ann});assert.equal(excel.status,200);assert.deepEqual([...new Uint8Array(await excel.arrayBuffer()).slice(0,2)],[80,75]);
+  assert.equal((await f.req("/api/hub/qc-basic/complete",{method:"POST",cookie:qa,body:{id,reviewed:false}})).status,400);
+  assert.equal((await f.req("/api/hub/qc-basic/complete",{method:"POST",cookie:ann,body:{id,reviewed:true}})).status,403);
+  assert.equal((await f.req("/api/hub/qc-basic/complete",{method:"POST",cookie:qa,body:{id,reviewed:true}})).status,200);
+  assert.equal((await basicRun(f,qa,assignmentId)).status,403);assert.equal((await basicRun(f,lead,assignmentId)).status,400);
+  const detail=await f.req("/api/hub/qc-job-start",{method:"POST",cookie:qa,body:{id:assignmentId}});assert.equal(detail.status,200,await detail.clone().text());
+  const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(snapshot.records.some(r=>r.kind==="qc-basic"&&r.id===id));
+  const restored=await f.req("/api/hub/restore",{method:"POST",cookie:lead,body:{confirm:"KHOI PHUC",snapshot}});assert.equal(restored.status,200,await restored.clone().text());
+  assert.equal((await f.app.hub.get(id)).status,"completed");
+ }finally{await f.close();}
+});
+
+test("Tool_QC rejects malformed input cleanly and reads the Datumaro JSON inside a ZIP",async()=>{
+ const f=await fixture();try{
+  const lead=await setupLead(f),qa=await activate(f,await invite(f,lead,2,"QA/QC"));
+  const assigned=await f.req("/api/hub/qc-job-assign",{method:"POST",cookie:lead,body:{taskId:"import-task-1241",reviewerId:"member-2"}}),assignmentId=(await assigned.json()).id;
+  const bad=await basicRun(f,qa,assignmentId,{content:'{"items":',name:"broken.json"});assert.equal(bad.status,202);const failed=await waitBasic(f,(await bad.json()).id);assert.equal(failed.status,"failed");assert.ok(failed.data.error);
+  const python=resolve("self-host/.runtime/qc-python/python.exe"),zip=execFileSync(python,["-I","-c","import io,zipfile,sys; b=io.BytesIO(); z=zipfile.ZipFile(b,'w'); z.writestr('annotations/default.json',sys.stdin.buffer.read()); z.close(); sys.stdout.buffer.write(b.getvalue())"],{input:JSON.stringify(basicDataset()),windowsHide:true});
+  const response=await basicRun(f,qa,assignmentId,{content:zip,name:"job.zip"});assert.equal(response.status,202);const ready=await waitBasic(f,(await response.json()).id);assert.equal(ready.status,"ready",ready.data.error);assert.equal(ready.data.summary.outsideCuboids,1);
  }finally{await f.close();}
 });
 

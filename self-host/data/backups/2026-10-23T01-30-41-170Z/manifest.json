@@ -1,0 +1,13 @@
+{
+  "format": "cuboid-selfhost-full-v1",
+  "createdAt": "2026-10-23T01:30:41.201Z",
+  "includes": [
+    "SQLite business data",
+    "Password hashes",
+    "Uploaded files"
+  ],
+  "excluded": [
+    "Active sessions",
+    "Unused activation/reset tokens"
+  ]
+}

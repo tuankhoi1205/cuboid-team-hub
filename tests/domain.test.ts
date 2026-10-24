@@ -456,6 +456,8 @@ test("one Job assignment persists across daily QC cycles; yesterday's latest ID 
  await assert.rejects(()=>h21.mutate(ann,"qc-job-assign",{taskId:task.id,reviewerId:qa.id}),/Chỉ Lead/);await assert.rejects(()=>h21.mutate(qa,"qc-job-start",{id:assignment.id}),/Chưa có Daily Report/);
  await h21.mutate(ann,"daily",{date:"2026-10-21",submit:true,lines:[{taskId:task.id,idCount:20,endId:"20",quantity:0,rework:0,minutes:240}]});
  await assert.rejects(()=>hub.mutate(other,"qc-job-start",{id:assignment.id}),/Chỉ người QA/);
+ await assert.rejects(()=>hub.mutate(qa,"qc-job-start",{id:assignment.id}),/Tool_QC/);
+ await hub.db.batch([hub.insert("qc-basic","unit-basic-completed",{assignmentId:assignment.id,reviewedBy:qa.id},{owner_id:ann.id,task_id:task.id,status:"completed"})]);
  const cycle=await hub.mutate(qa,"qc-job-start",{id:assignment.id});assert.equal((await hub.get(cycle.id!)).data.endId,"20");assert.equal((await hub.mutate(qa,"qc-job-start",{id:assignment.id})).id,cycle.id);
  await hub.mutate(qa,"qc-result",{id:cycle.id,idChecks:qcIdRows("1","20","Sai vị trí").map(r=>({...r,result:r.objectId==="5"?"changes":"passed",description:r.objectId==="5"?"Hộp lệch":""}))});
  assert.equal(qcClearedThrough(await hub.rows(),task.id!),"4");const review=await hub.get((await hub.get(cycle.id!)).data.reviewId);await hub.mutate(ann,"review-fix",{id:review.id,errorIndex:0,fixed:true});assert.equal(qcClearedThrough(await hub.rows(),task.id!),"20");
