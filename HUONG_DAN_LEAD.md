@@ -1,5 +1,16 @@
 # Cuboid Team Hub — Hướng dẫn cho Nguyễn Tuấn Khôi
 
+## Chọn ngày tính mục tiêu và sản lượng KPI
+
+Ở Tổng quan, mở **Quy tắc KPI theo ngày**, chọn ngày bất kỳ (kể cả ngày quá khứ) và **Toàn team** hoặc một thành viên. Có hai lựa chọn độc lập:
+
+- **Tính mục tiêu KPI của ngày này**: cộng mức KPI theo người/ngày vào chỉ tiêu kỳ, theo lịch làm việc.
+- **Cộng sản lượng ngày này vào KPI tuần**: cộng số cuboid thực tế vào tiến độ tuần/lũy kế. Tắt lựa chọn này để giữ Daily Report nhưng không cộng sản lượng vào KPI.
+
+Có thể bật lại cả hai, hoặc chỉ bật một lựa chọn. Quy tắc cá nhân ưu tiên toàn team. Daily Report, ID, QC, rework, điểm danh và quyền nhập/sửa trước 17h vẫn giữ nguyên. Quy tắc cũ chỉ miễn mục tiêu tiếp tục giữ cách tính trước đó; không tự tắt sản lượng lịch sử.
+
+Báo cáo tuần và Excel vẫn hiện sản lượng thực tế từng ngày, ghi rõ **Không cộng KPI** và phần được cộng. Tuần lịch sử chỉ có tổng đã chốt, chưa có phân bổ ngày chính xác, được giữ nguyên để tránh trừ ước lượng; form cảnh báo khi chọn ngày trong tuần đó.
+
 ## Đăng nhập và kích hoạt
 
 Ứng dụng hiện chạy độc lập trên máy Windows của Khôi, đăng nhập bằng **tên đăng nhập và mật khẩu riêng**. Mở `self-host/StartHub.cmd`. Theo yêu cầu của Khôi, 10 tài khoản hiện tại đã được kích hoạt và cấp mật khẩu ban đầu chung; mỗi người có thể tự chọn **Đổi mật khẩu** sau khi đăng nhập. Không cần tài khoản ChatGPT. Với cơ sở dữ liệu mới, Khôi thiết lập tài khoản **26ai.khoint2** tại `http://127.0.0.1:3210/auth/setup`. Xem [hướng dẫn chạy máy chủ, sao lưu và khôi phục mật khẩu](self-host/README.md).
@@ -57,7 +68,7 @@ Mỗi ngày tính KPI cộng mức KPI của người đó vào mục tiêu lũy
 
 Tính thứ Hai–thứ Sáu; Chủ nhật không tính. Thứ Bảy làm/nghỉ cách tuần, mốc hiện tại là **24/10/2026 làm**, **31/10 nghỉ**, **07/11 làm**. Ngày bắt đầu lũy kế mặc định **20/10/2026**. Khôi đổi ngày bắt đầu và một thứ Bảy làm việc tại **Cài đặt → Quy tắc làm việc → Chỉnh sửa**.
 
-Ở **Tổng quan / Daily Report → Không tính KPI ngày…**, Khôi chọn ngày và **Toàn team** hoặc một người. Ngày loại trừ không cộng KPI, không xóa sản lượng và không đổi điểm danh thành nghỉ. Xem danh sách tại **Cài đặt → Lịch KPI và ngày không tính**; chọn **Tính lại KPI** để bỏ ngoại lệ. Mục tiêu không tự giảm theo nghỉ nửa ngày; Khôi chủ động đặt mức riêng hoặc chọn ngày miễn KPI.
+Ở **Tổng quan / Weekly Report → Quy tắc KPI theo ngày**, Khôi chọn ngày và **Toàn team** hoặc một người. Mục tiêu và sản lượng được bật/tắt độc lập; không xóa Daily Report hoặc đổi điểm danh thành nghỉ. Xem danh sách tại **Cài đặt → Quy tắc KPI theo ngày**, chọn **Sửa quy tắc** để thay đổi hoặc bật lại. Mục tiêu không tự giảm theo nghỉ nửa ngày; Khôi chủ động đặt mức riêng hoặc chọn ngày miễn KPI.
 
 Bảng **Cuboid đã làm / KPI lũy kế** dùng sản lượng cuboid từ báo cáo đã gửi/duyệt và dữ liệu lịch sử đang giữ. Nháp không cộng vào lũy kế; QC và sửa lỗi không được cộng thêm vào sản lượng mới. Ngày không tính KPI có mục tiêu bằng 0; không chia cho 0 khi hiển thị phần trăm. Sản lượng làm thêm vào ngày đó vẫn được ghi nhận.
 

@@ -380,10 +380,11 @@ export class Hub {
     if (action === "target") { this.lead(m); const data = z.object({ memberId: id, projectId: id, from: date, to: date, quantity: num.positive() }).parse(b); ensure(data.to >= data.from, "Khoảng ngày không hợp lệ"); await this.get(data.projectId, "project"); ensure((await this.members()).some(x => x.id === data.memberId), "Thành viên không tồn tại"); return this.commit(m, "Thiết lập chỉ tiêu", b.id ? await this.get(b.id, "target") : null, "target", data, { owner_id: data.memberId, project_id: data.projectId, date: data.from }); }
     if (action === "notification-read") { const row = await this.get(id.parse(b.id), "notification"); ensure(row.owner_id === m.id, "Không có quyền", 403); await this.db.batch([this.replace(row, { ...row.data, read: true })]); return { ok: true }; }
     if(action==="kpi-exclusion") {
-      this.attendanceLead(m);const data=z.object({date,memberId:id.nullable().default(null),reason:str.default(""),enabled:z.boolean().default(true)}).parse(b);
+      this.attendanceLead(m);const data=z.object({date,memberId:id.nullable().default(null),reason:str.default(""),enabled:z.boolean().default(true),excludeProduction:z.boolean().optional()}).parse(b);
       ensure(!data.memberId||(await this.members()).some(m=>m.id===data.memberId),"Thành viên không tồn tại");
       const key=(data.memberId||"team")+":"+data.date,old=(await this.rows("kpi-exclusion")).find(r=>r.natural_key===key);
-      return this.commit(m,data.enabled?"Không tính KPI trong ngày":"Tính lại KPI trong ngày",old||null,"kpi-exclusion",data,{owner_id:data.memberId,date:data.date,natural_key:key,status:data.enabled?"active":"disabled"});
+      const value={...data,excludeProduction:data.excludeProduction??old?.data.excludeProduction??false,policyVersion:2};
+      return this.commit(m,"Cập nhật mục tiêu và sản lượng KPI theo ngày",old||null,"kpi-exclusion",value,{owner_id:data.memberId,date:data.date,natural_key:key,status:value.enabled||value.excludeProduction?"active":"disabled"});
     }
     if(action==="kpi-rate") {
       this.attendanceLead(m);const data=z.object({memberId:id,date,quantity:num.int(),reason:str.default("")}).parse(b);

@@ -3647,10 +3647,23 @@ function dailyRate(memberId, day, records) {
 	const rate = records.filter((r) => r.kind === "kpi-rate" && r.owner_id === memberId && r.status === "active" && r.date <= day).sort((a, b) => b.date.localeCompare(a.date))[0];
 	return rate ? Number(rate.data.quantity) : DAILY_CUBOID_TARGET;
 }
+function kpiDayPolicy(day, memberId, records) {
+	const rules = records.filter((r) => r.kind === "kpi-exclusion" && r.date === day && (!r.owner_id || r.owner_id === memberId));
+	const personal = memberId ? rules.find((r) => r.owner_id === memberId && r.data.policyVersion === 2) : void 0;
+	if (personal) return {
+		includeTarget: !personal.data.enabled,
+		includeProduction: !personal.data.excludeProduction
+	};
+	const active = rules.filter((r) => r.status === "active");
+	return {
+		includeTarget: !active.some((r) => r.data.enabled !== false),
+		includeProduction: !active.some((r) => r.data.excludeProduction === true)
+	};
+}
 function kpiDayTarget(day, memberId, records, settings = {}) {
 	const config = Object.keys(settings).length ? settings : records.find((r) => r.id === "settings")?.data || {};
 	if (day < (config.kpiStartDate || "2026-10-20") || !scheduledWorkday(day, config)) return 0;
-	if (records.some((r) => r.kind === "kpi-exclusion" && r.status === "active" && r.date === day && (!r.owner_id || r.owner_id === memberId))) return 0;
+	if (!kpiDayPolicy(day, memberId, records).includeTarget) return 0;
 	return dailyRate(memberId, day, records);
 }
 function dailyKpi(report, records) {
@@ -3683,7 +3696,7 @@ function cumulativeKpi(memberId, records, end = vietnamToday()) {
 		"submitted",
 		"approved",
 		"imported"
-	].includes(r.status) && !r.data.scoped);
+	].includes(r.status) && !r.data.scoped && kpiDayPolicy(r.date, memberId, records).includeProduction);
 	const quantity = reports.reduce((n, r) => n + dailyKpi(r, records).quantity, 0), pendingReports = reports.filter((r) => dailyKpi(r, records).pending).length;
 	return {
 		start,
@@ -3711,7 +3724,7 @@ function weeklyKpi(memberId, records, asOf = vietnamToday()) {
 		"submitted",
 		"approved",
 		"imported"
-	].includes(r.status) && !r.data.scoped);
+	].includes(r.status) && !r.data.scoped && kpiDayPolicy(r.date, memberId, records).includeProduction);
 	const quantity = reports.reduce((n, r) => n + dailyKpi(r, records).quantity, 0), pendingReports = reports.filter((r) => dailyKpi(r, records).pending).length;
 	return {
 		start,
@@ -3810,8 +3823,9 @@ function buildTeamEvaluation(members, records, from, to) {
 		const jobs = [...taskMap.values()].filter((r) => r.data.assigneeId === member.id);
 		const reports = records.filter((r) => r.kind === "daily" && r.owner_id === member.id && inRange(r.date, from, to) && REPORT_STATES.includes(r.status));
 		const cuboidLines = reports.flatMap((r) => r.data.lines || []).filter((l) => l.activity !== "qc" && projectMap.get(taskMap.get(l.taskId)?.project_id || "")?.data.unit === "cuboid");
-		const pendingKeyframeReports = reports.filter((r) => (r.data.lines || []).some((l) => l.activity !== "qc" && l.productionPending)).length;
-		const quantity = sum(cuboidLines.map((l) => n(l.quantity))) + sum(reports.map((r) => reportedQc(r)?.kpiCuboids || 0)), missingQuantityLines = cuboidLines.filter((l) => !numeric(l.quantity)).length;
+		const kpiReports = reports.filter((r) => !r.data.scoped && kpiDayPolicy(r.date, member.id, records).includeProduction);
+		const pendingKeyframeReports = kpiReports.filter((r) => (r.data.lines || []).some((l) => l.activity !== "qc" && l.productionPending)).length;
+		const quantity = sum(kpiReports.map((r) => dailyKpi(r, records).quantity)), missingQuantityLines = cuboidLines.filter((l) => !numeric(l.quantity)).length;
 		const kpiApplicable = member.role !== "Lead" || jobs.some((t) => projectMap.get(t.project_id || "")?.data.unit === "cuboid") || records.some((r) => r.kind === "kpi-rate" && r.owner_id === member.id && r.status === "active" && r.date <= to);
 		const targets = days.map((day) => kpiApplicable ? kpiDayTarget(day, member.id, records) : 0), target = sum(targets), kpiDays = targets.filter((t) => t > 0).length;
 		const complete = jobs.filter((t) => t.status === "done" && inRange(dayOf$1(t.data.completedAt), from, to));
@@ -5152,7 +5166,7 @@ var validReports = new Set([
 function buildWeeklySummary(members, records, week, asOf, owner = "team") {
 	const selected = new Set(members.filter((m) => owner === "team" || m.id === owner).map((m) => m.id));
 	const start = weeklyStart(week), end = add(start, 6), cutoff = end < asOf ? end : asOf, config = records.find((r) => r.id === "settings")?.data || {}, days = Array.from({ length: 7 }, (_, i) => add(start, i)), tasks = new Map(records.filter((r) => r.kind === "task").map((r) => [r.id, r])), projects = new Map(records.filter((r) => r.kind === "project").map((r) => [r.id, r]));
-	const workDays = days.filter((day, index) => index < 5 || index === 5 && scheduledWorkday(day, config) && !records.some((r) => r.kind === "kpi-exclusion" && r.status === "active" && !r.owner_id && r.date === day));
+	const workDays = days.filter((day, index) => index < 5 || index === 5 && scheduledWorkday(day, config) && members.some((m) => selected.has(m.id) && kpiDayPolicy(day, m.id, records).includeTarget));
 	const reviews = records.filter((r) => r.kind === "review" && dayOf(r) <= cutoff), firstIds = /* @__PURE__ */ new Map();
 	for (const review of [...reviews].sort((a, b) => (a.data.checkedAt || a.date || a.created_at).localeCompare(b.data.checkedAt || b.date || b.created_at))) {
 		const owner = review.data.fixerId || tasks.get(review.task_id || "")?.data.assigneeId;
@@ -5215,7 +5229,7 @@ function buildWeeklySummary(members, records, week, asOf, owner = "team") {
 		const reports = records.filter((r) => r.kind === "daily" && r.owner_id === member.id && r.date >= start && r.date <= cutoff && validReports.has(r.status)), base = evaluations.find((r) => r.memberId === member.id), mine = events.filter((e) => e.reviewerId === member.id);
 		const applicable = member.role !== "Lead" || reports.some((r) => (r.data.lines || []).some((l) => l.activity !== "qc" && projects.get(tasks.get(l.taskId)?.project_id || "")?.data.unit === "cuboid")) || records.some((r) => r.kind === "kpi-rate" && r.owner_id === member.id && r.status === "active" && r.date <= end);
 		const daily = days.map((date) => {
-			const report = reports.find((r) => r.date === date), lines = (report?.data.lines || []).filter((l) => l.activity !== "qc" && projects.get(tasks.get(l.taskId)?.project_id || "")?.data.unit === "cuboid"), future = date > cutoff, expected = !future && date >= (config.kpiStartDate || "2026-10-20") && scheduledWorkday(date, config), target = applicable ? kpiDayTarget(date, member.id, records) : 0, quantity = report ? dailyKpi(report, records).quantity : null, pending = lines.some((l) => l.productionPending), attendance = !future ? records.find((r) => r.kind === "attendance" && r.owner_id === member.id && r.date === date) : void 0, jobs = mine.filter((e) => e.date === date), qc = reportedQcStats(report, jobs.map((e) => String(e.jobId || e.taskId || e.id)), jobs.length);
+			const report = reports.find((r) => r.date === date), lines = (report?.data.lines || []).filter((l) => l.activity !== "qc" && projects.get(tasks.get(l.taskId)?.project_id || "")?.data.unit === "cuboid"), future = date > cutoff, expected = !future && date >= (config.kpiStartDate || "2026-10-20") && scheduledWorkday(date, config), policy = kpiDayPolicy(date, member.id, records), target = applicable ? kpiDayTarget(date, member.id, records) : 0, quantity = report ? dailyKpi(report, records).quantity : null, pending = lines.some((l) => l.productionPending), attendance = !future ? records.find((r) => r.kind === "attendance" && r.owner_id === member.id && r.date === date) : void 0, jobs = mine.filter((e) => e.date === date), qc = reportedQcStats(report, jobs.map((e) => String(e.jobId || e.taskId || e.id)), jobs.length);
 			return {
 				date,
 				memberId: member.id,
@@ -5224,12 +5238,14 @@ function buildWeeklySummary(members, records, week, asOf, owner = "team") {
 				rate: applicable ? dailyRate(member.id, date, records) : null,
 				target,
 				quantity,
+				includeTarget: policy.includeTarget,
+				includeProduction: policy.includeProduction,
 				hasReport: !!report,
 				expected,
 				future,
 				pending,
-				ratio: !future && !pending && target && quantity !== null ? quantity / target : null,
-				result: future ? "Chưa đến ngày" : !applicable ? "Không áp dụng" : target === 0 ? "Không tính KPI" : pending ? "Chờ bảng đếm" : quantity === null ? "Chưa gửi" : quantity >= target ? "Đạt" : "Chưa đạt",
+				ratio: !future && policy.includeProduction && !pending && target && quantity !== null ? quantity / target : null,
+				result: future ? "Chưa đến ngày" : !applicable ? "Không áp dụng" : target === 0 ? "Không tính KPI" : !policy.includeProduction ? "Không cộng sản lượng KPI" : pending ? "Chờ bảng đếm" : quantity === null ? "Chưa gửi" : quantity >= target ? "Đạt" : "Chưa đạt",
 				jobs: [...new Set((report?.data.lines || []).map((l) => l.jobId || tasks.get(l.taskId)?.data.jobId).filter(Boolean))].join(", "),
 				qcJobs: qc.jobs,
 				qcRounds: qc.rounds,
@@ -5242,9 +5258,10 @@ function buildWeeklySummary(members, records, week, asOf, owner = "team") {
 				offEquivalent: attendance ? attendance.status === "half" ? .5 : ["leave", "absent"].includes(attendance.status) ? 1 : 0 : null
 			};
 		});
-		const quantity = daily.reduce((n, d) => n + (d.quantity || 0), 0), target = daily.reduce((n, d) => n + d.target, 0), pending = daily.some((d) => d.pending), missingReports = daily.filter((d) => d.expected && !d.hasReport).length, idChecks = [...firstIds.values()].filter((c) => c.memberId === member.id && c.day >= start && c.day <= cutoff), idPassed = idChecks.filter((c) => c.passed).length;
+		const quantity = daily.reduce((n, d) => n + (d.includeProduction ? d.quantity || 0 : 0), 0), target = daily.reduce((n, d) => n + d.target, 0), pending = daily.some((d) => d.includeProduction && d.pending), missingReports = daily.filter((d) => d.expected && !d.hasReport).length, idChecks = [...firstIds.values()].filter((c) => c.memberId === member.id && c.day >= start && c.day <= cutoff), idPassed = idChecks.filter((c) => c.passed).length;
 		const qualityId = idChecks.length ? idPassed / idChecks.length : null, qualityCuboid = base.firstPassChecked ? base.firstPassPassed / base.firstPassChecked : null, quality = qualityId ?? qualityCuboid, qualityBasis = qualityId !== null ? "ID đạt QC lần đầu" : qualityCuboid !== null ? "Cuboid đạt QC lần đầu" : "Chưa có số đã kiểm / số đạt";
 		const notes = [
+			...daily.filter((d) => !d.future && d.hasReport && !d.includeProduction).map((d) => `${d.date}: ${d.quantity ?? 0} cuboid không cộng KPI`),
 			...reports.filter((r) => r.data.manualProduction?.approximate).map((r) => `${r.date}: sản lượng ước lượng`),
 			reports.some((r) => reportedQc(r)?.jobs === null) ? "Có khối lượng QC chưa ghi số bài / Job ID" : "",
 			pending ? "Có báo cáo chờ bảng đếm" : "",
@@ -5401,7 +5418,7 @@ function buildWeeklySummary(members, records, week, asOf, owner = "team") {
 		}))),
 		rules: [
 			"Tuần hiện tại lấy sản lượng từ Daily Report đã gửi/duyệt; QC và sửa lỗi không tự cộng annotation mới; khối lượng được Lead xác nhận tính KPI giữ theo báo cáo. Tuần đã chốt theo tổng riêng thì không tự phân bổ số liệu về ngày.",
-			"KPI từng ngày lấy mức riêng có hiệu lực của người đó, lịch thứ Bảy cách tuần và ngày miễn KPI. Không tự đổi KPI cũ theo role.",
+			"KPI từng ngày lấy mức riêng có hiệu lực, lịch làm việc và lựa chọn tính mục tiêu. Sản lượng tuần chỉ cộng ngày được Lead bật; cột ngày và Daily Report vẫn giữ sản lượng thực tế. Quy tắc cá nhân ưu tiên toàn team; áp dụng cả ngày quá khứ. Không tự đổi tổng tuần đã chốt khi chưa có phân bổ ngày.",
 			"Tiến độ theo ngày: annotator ghi cuboid; Lead/QA/QC ghi cuboid/bài QC, ví dụ 600/2. Bài QC mỗi ngày đếm Job khác nhau có kết quả; Lượt QC tuần đếm từng lượt ghi kết quả, không đếm phân công chưa thực hiện.",
 			"Quality ID = ID đạt ngay lần kiểm đầu / ID có kết quả lần kiểm đầu, mỗi ID/Job chỉ tính một lần. Không trộn ID với cuboid; thiếu mẫu số để trống.",
 			"Ngày nghỉ quy đổi = nghỉ phép cả ngày + vắng cả ngày + 0,5 × số lần nghỉ nửa ngày. Rework: mỗi người mỗi ngày có lỗi tính một lần."
@@ -5579,7 +5596,10 @@ function weeklySummarySheets(data) {
 				"Rework",
 				"Điểm danh",
 				"Tác phong",
-				"Nghỉ quy đổi"
+				"Nghỉ quy đổi",
+				"Tính mục tiêu KPI",
+				"Cộng sản lượng KPI",
+				"Cuboid cộng KPI"
 			], ...data.rows.flatMap((r) => r.daily.map((d) => [
 				date(d.date),
 				r.name,
@@ -5595,7 +5615,10 @@ function weeklySummarySheets(data) {
 				d.rework,
 				d.attendance,
 				d.conduct,
-				d.offEquivalent
+				d.offEquivalent,
+				d.includeTarget ? "Có" : "Không",
+				d.includeProduction ? "Có" : "Không",
+				r.dailyUnallocated || d.future ? null : d.includeProduction ? d.quantity : 0
 			]))]
 		},
 		{
@@ -7194,15 +7217,21 @@ var Hub = class {
 				date: date$1,
 				memberId: id.nullable().default(null),
 				reason: str.default(""),
-				enabled: booleanType().default(true)
+				enabled: booleanType().default(true),
+				excludeProduction: booleanType().optional()
 			}).parse(b);
 			ensure(!data.memberId || (await this.members()).some((m) => m.id === data.memberId), "Thành viên không tồn tại");
 			const key = (data.memberId || "team") + ":" + data.date, old = (await this.rows("kpi-exclusion")).find((r) => r.natural_key === key);
-			return this.commit(m, data.enabled ? "Không tính KPI trong ngày" : "Tính lại KPI trong ngày", old || null, "kpi-exclusion", data, {
+			const value = {
+				...data,
+				excludeProduction: data.excludeProduction ?? old?.data.excludeProduction ?? false,
+				policyVersion: 2
+			};
+			return this.commit(m, "Cập nhật mục tiêu và sản lượng KPI theo ngày", old || null, "kpi-exclusion", value, {
 				owner_id: data.memberId,
 				date: data.date,
 				natural_key: key,
-				status: data.enabled ? "active" : "disabled"
+				status: value.enabled || value.excludeProduction ? "active" : "disabled"
 			});
 		}
 		if (action === "kpi-rate") {
@@ -7902,7 +7931,7 @@ function reportSheets(kind, records, all, members, weekly = {}, scope = {}) {
 	if (kind === "daily") for (const m of owners) {
 		const k = summarize(m.id);
 		for (let d = k.start; d <= k.end; d = add(d)) {
-			const excluded = all.some((r) => r.kind === "kpi-exclusion" && r.status === "active" && r.date === d && (!r.owner_id || r.owner_id === m.id));
+			const excluded = !kpiDayPolicy(d, m.id, all).includeTarget;
 			const reports = d > asOf ? [] : all.filter((r) => r.kind === "daily" && r.owner_id === m.id && r.date === d && [
 				"submitted",
 				"approved",

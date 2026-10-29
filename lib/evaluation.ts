@@ -1,5 +1,5 @@
 import type { Member,Row } from "./domain.ts";
-import { dailyKpi,dailyRate,kpiDayTarget,scheduledWorkday,KPI_START_DATE } from "./kpi.ts";
+import { dailyKpi,dailyRate,kpiDayTarget,kpiDayPolicy,scheduledWorkday,KPI_START_DATE } from "./kpi.ts";
 import type { ExportSheet,FormulaCell } from "./export.ts";
 import { reworkDays } from "./qc.ts";
 import {reportedQc,reportedQcStats} from "./reported-qc.ts";
@@ -30,8 +30,9 @@ export function buildTeamEvaluation(members:Member[],records:Row[],from:string,t
   const jobs=[...taskMap.values()].filter(r=>r.data.assigneeId===member.id);
   const reports=records.filter(r=>r.kind==="daily"&&r.owner_id===member.id&&inRange(r.date,from,to)&&REPORT_STATES.includes(r.status));
   const cuboidLines=reports.flatMap(r=>r.data.lines||[]).filter((l:any)=>l.activity!=="qc"&&projectMap.get(taskMap.get(l.taskId)?.project_id||"")?.data.unit==="cuboid");
-  const pendingKeyframeReports=reports.filter(r=>(r.data.lines||[]).some((l:any)=>l.activity!=="qc"&&l.productionPending)).length;
-  const quantity=sum(cuboidLines.map((l:any)=>n(l.quantity)))+sum(reports.map(r=>reportedQc(r)?.kpiCuboids||0)),missingQuantityLines=cuboidLines.filter((l:any)=>!numeric(l.quantity)).length;
+  const kpiReports=reports.filter(r=>!r.data.scoped&&kpiDayPolicy(r.date!,member.id,records).includeProduction);
+  const pendingKeyframeReports=kpiReports.filter(r=>(r.data.lines||[]).some((l:any)=>l.activity!=="qc"&&l.productionPending)).length;
+  const quantity=sum(kpiReports.map(r=>dailyKpi(r,records).quantity)),missingQuantityLines=cuboidLines.filter((l:any)=>!numeric(l.quantity)).length;
   const kpiApplicable=member.role!=="Lead"||jobs.some(t=>projectMap.get(t.project_id||"")?.data.unit==="cuboid")||records.some(r=>r.kind==="kpi-rate"&&r.owner_id===member.id&&r.status==="active"&&r.date!<=to);
   const targets=days.map(day=>kpiApplicable?kpiDayTarget(day,member.id,records):0),target=sum(targets),kpiDays=targets.filter(t=>t>0).length;
   const complete=jobs.filter(t=>t.status==="done"&&inRange(dayOf(t.data.completedAt),from,to));

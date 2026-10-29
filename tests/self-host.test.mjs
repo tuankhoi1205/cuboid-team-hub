@@ -12,6 +12,24 @@ const origin="http://127.0.0.1:3210";
 const cookie=r=>r.headers.get("set-cookie")?.split(";")[0]||"";
 const leadPassword="A private lead test phrase 2026!";
 const memberPassword="A private member test phrase 2026!";
+test("Lead controls past-day target and production independently; reports remain writable and backups retain policy",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-28T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),task=(await f.app.hub.rows("task")).find(t=>t.data.assigneeId==="member-1");
+  const report=(date,quantity,session=lead)=>f.req("/api/hub/daily",{method:"POST",cookie:session,body:{memberId:"member-1",date,submit:true,lines:[{taskId:task.id,endId:date==="2026-10-26"?"100":"120",activity:"annotation",minutes:420,quantity,rework:0}]}});
+  let response=await report("2026-10-26",1200);assert.equal(response.status,200,await response.clone().text());
+  const before=await f.app.hub.rows("daily"),set=(body,cookie=lead)=>f.req("/api/hub/kpi-exclusion",{method:"POST",cookie,body:{date:"2026-10-26",memberId:"member-1",...body}});
+  assert.equal((await set({enabled:false,excludeProduction:true},ann)).status,403);
+  assert.equal((await set({enabled:false,excludeProduction:true})).status,200);assert.deepEqual(await f.app.hub.rows("daily"),before);
+  response=await report("2026-10-28",600,ann);assert.equal(response.status,200,await response.clone().text());
+  const week=async()=>await(await f.req("/api/hub/weekly-summary?week=2026-10-26&member=member-1",{cookie:lead})).json();
+  let summary=await week();assert.equal(summary.rows[0].quantity,600);assert.equal(summary.rows[0].target,6000);assert.equal(summary.rows[0].daily[0].quantity,1200);
+  assert.equal((await set({enabled:true,excludeProduction:true,date:"2026-10-28",memberId:null})).status,200);summary=await week();assert.equal(summary.rows[0].quantity,0);assert.equal(summary.rows[0].target,4800);
+  assert.equal((await set({enabled:false,excludeProduction:false,date:"2026-10-28"})).status,200);summary=await week();assert.equal(summary.rows[0].quantity,600);assert.equal(summary.rows[0].target,6000);
+  assert.equal((await set({enabled:false,excludeProduction:false})).status,200);assert.equal((await week()).rows[0].quantity,1800);
+  const backup=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(backup.records.some(r=>r.kind==="kpi-exclusion"&&r.data.policyVersion===2));
+  response=await f.req("/api/hub/restore",{method:"POST",cookie:lead,body:{confirm:"KHOI PHUC",snapshot:backup}});assert.equal(response.status,200,await response.clone().text());assert.equal((await week()).rows[0].quantity,1800);
+ }finally{await f.close();}
+});
 async function fixture(options={}) {
  const dir=await mkdtemp(resolve(".sites-runtime/selfhost-test-"));
  const app=await createLocalApp({dataDir:dir,publicDir:join(buildDir,"client"),...options});

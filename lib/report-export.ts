@@ -1,7 +1,7 @@
 import type { Member,Row } from "./domain";
 import type { ExportSheet,FormulaCell } from "./export";
 import {reportedQcLabel} from "./reported-qc.ts";
-import { dailyKpi,cumulativeKpi,weeklyKpi,vietnamToday,dailyRate,kpiDayTarget,scheduledWorkday,nextWorkday } from "./kpi.ts";
+import { dailyKpi,cumulativeKpi,weeklyKpi,vietnamToday,dailyRate,kpiDayTarget,kpiDayPolicy,scheduledWorkday,nextWorkday } from "./kpi.ts";
 import { qcSessionSheets } from "./qc-export.ts";
 import {taskFrameCount} from "./task-frames.ts";
 import {reportEndId} from "./report-progress.ts";
@@ -23,7 +23,7 @@ export function reportSheets(kind:string,records:Row[],all:Row[],members:Member[
  const add=(day:string)=>{const d=new Date(day+"T12:00:00Z");d.setUTCDate(d.getUTCDate()+1);return d.toISOString().slice(0,10);};
  const weeklyKpiOnly=scope.kpiPeriod==="weekly",asOf=scope.asOf||vietnamToday(),summarize=(memberId:string)=>weeklyKpiOnly?weeklyKpi(memberId,all,asOf):cumulativeKpi(memberId,all,asOf);
  const calendar:unknown[][]=[["Ngày","Nhân sự","Tên đăng nhập","Mức KPI (cuboid/ngày)","Theo lịch công ty","Không tính KPI","Mục tiêu ngày (cuboid)","Đã làm (cuboid)"]];
- if(kind==="daily")for(const m of owners){const k=summarize(m.id);for(let d=k.start;d<=k.end;d=add(d)){const excluded=all.some(r=>r.kind==="kpi-exclusion"&&r.status==="active"&&r.date===d&&(!r.owner_id||r.owner_id===m.id));const reports=d>asOf?[]:all.filter(r=>r.kind==="daily"&&r.owner_id===m.id&&r.date===d&&["submitted","approved","imported"].includes(r.status)&&!r.data.scoped);calendar.push([date(d),m.name,handle(m.id),dailyRate(m.id,d,all),scheduledWorkday(d,config)?"Làm việc":"Nghỉ",excluded?"Có":"Không",kpiDayTarget(d,m.id,all),reports.reduce((n,r)=>n+dailyKpi(r,all).quantity,0)]);}}
+ if(kind==="daily")for(const m of owners){const k=summarize(m.id);for(let d=k.start;d<=k.end;d=add(d)){const excluded=!kpiDayPolicy(d,m.id,all).includeTarget;const reports=d>asOf?[]:all.filter(r=>r.kind==="daily"&&r.owner_id===m.id&&r.date===d&&["submitted","approved","imported"].includes(r.status)&&!r.data.scoped);calendar.push([date(d),m.name,handle(m.id),dailyRate(m.id,d,all),scheduledWorkday(d,config)?"Làm việc":"Nghỉ",excluded?"Có":"Không",kpiDayTarget(d,m.id,all),reports.reduce((n,r)=>n+dailyKpi(r,all).quantity,0)]);}}
  if(kind==="morning") {
   const production=scope.productionDate!,morning=scope.morningDate!;
   const yesterday=new Date(morning+"T12:00:00Z");yesterday.setUTCDate(yesterday.getUTCDate()-1);
