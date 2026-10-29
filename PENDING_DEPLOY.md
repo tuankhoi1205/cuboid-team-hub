@@ -10,6 +10,7 @@ Web local đã được cập nhật và kiểm tra. Mã nguồn hiện có toà
 - QA/QC: app offline xuất Excel/JSON, web nhận kết quả theo Job, giữ log và quyền sửa/xác nhận. Báo cáo số bài QC không tạo kết quả Đạt hoặc quality.
 - Hỏi đáp: câu hỏi, trả lời, tìm kiếm không dấu cả nội dung, chủ đề/trạng thái, lời giải đáp được chọn và FAQ do Lead duyệt.
 - Sao lưu: SQLite, tài khoản và tệp; snapshot AES-256-GCM dùng khóa riêng. Phiên đăng nhập và token khôi phục không có trong snapshot Git.
+- Nhận dữ liệu qua Git: snapshot có manifest phiên bản. Sau pull/build/restart, server sao lưu DB/tệp cũ rồi thay bằng snapshot một lần. Các lần mở lại và push chỉ sửa code giữ dữ liệu nhập thêm. Có kiểm tra checksum, khóa, SQLite, server đang chạy và phục hồi thao tác bị gián đoạn. `PullAndUpdateLocal.cmd` cập nhật app mà giữ tunnel hiện tại.
 
 ## QC desktop
 
@@ -19,4 +20,4 @@ Mã nguồn phiên bản 1.1.2: ma trận ID/frame, kéo chọn, nhiều log tr�
 
 Đã kiểm tra TypeScript, staged build, nghiệp vụ, HTTP/phân quyền/sao lưu và định dạng Excel. Lần nhập dữ liệu gần nhất chạy thử trên DB riêng, kiểm tra lần hai không trùng và bảo toàn toàn bộ dữ liệu cũ trước khi áp dụng nguyên tử. Bản web đang phục vụ trùng hash build đã kiểm thử. Không thay mạng/tunnel khi cập nhật dữ liệu. Xem CHUYEN_MAY_HOST.md để chạy trên máy khác.
 
-GitHub chưa nhận bản này nếu kết nối Git lỗi chứng chỉ. Kết nối tại máy chuẩn bị bị lỗi chuỗi chứng chỉ Vingroup Web Gateway; không tắt xác minh TLS. Người dùng chọn nhận file bàn giao và tự push sau.
+Cơ chế nhận dữ liệu mới đã kiểm tra trên server riêng và DB sao chép: thay bản cũ, lưu bản cũ để khôi phục, đăng nhập bắt buộc và giữ dữ liệu nhập thêm sau lần nhận đầu tiên. DB đang phục vụ trên máy chuẩn bị không bị thay thế. Khi push, giữ xác minh TLS và dùng mạng được người dùng cho phép.

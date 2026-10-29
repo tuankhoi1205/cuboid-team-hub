@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, join, sep, extname } from "node:path";
 import { randomUUID } from "node:crypto";
+import { pathToFileURL } from "node:url";
 import { z } from "zod";
 import { Hub, HubError, ensure, type Member } from "../lib/domain.ts";
 import { handleHub, type HubRuntime } from "../lib/hub-http.ts";
@@ -130,6 +131,8 @@ export async function createLocalApp(options:Options) {
 
 if(process.env.HUB_NO_LISTEN!=="1") {
   const port=Number(process.env.HUB_PORT||3210);const base=process.env.HUB_ROOT||process.cwd();
+  const {applyPublishedData}=await import(/* @vite-ignore */ pathToFileURL(join(base,"repo-data-update.mjs")).href);
+  await applyPublishedData({root:base,dataDir:process.env.HUB_DATA_DIR||join(base,"data"),port});
   const app=await createLocalApp({dataDir:process.env.HUB_DATA_DIR||join(base,"data"),publicDir:process.env.HUB_PUBLIC_DIR||join(base,"dist/client"),port});
   app.server.on("error",e=>{console.error("Không thể mở máy chủ:",e.message);process.exitCode=1;});
   app.server.listen(port,"127.0.0.1",()=>console.log(`Cuboid Team Hub tự host: http://127.0.0.1:${port}\nĐăng nhập bằng tài khoản riêng. Dữ liệu: ${resolve(process.env.HUB_DATA_DIR||join(base,"data"))}`));

@@ -14,16 +14,18 @@ Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), c�
 
 **Khóa giải mã lưu riêng trên máy host:** `self-host/.runtime/repo-backup-key.json`. Khóa không được commit. Lưu thêm một bản khóa ở nơi riêng để có thể khôi phục khi chuyển máy; file mã hóa trên GitHub cần khóa này để mở.
 
-Đây là snapshot tại lúc sao lưu, chưa có đồng bộ DB tự động. Tạo snapshot mới từ thư mục gốc repo:
+Khi anh xuất và push một bản dữ liệu mới, máy host pull về, build và khởi động lại sẽ **tự sao lưu DB/tệp cũ rồi thay toàn bộ bằng snapshot mới**. Mỗi phiên bản dữ liệu chỉ được áp dụng một lần; các lần mở lại hoặc push chỉ có code sẽ giữ dữ liệu nhập thêm. Dữ liệu trên hai máy không được gộp; báo cáo và mật khẩu mới phát sinh ở máy host sau thời điểm snapshot sẽ chỉ còn trong bản sao DB cũ nếu bị thay thế.
+
+Tạo phiên bản dữ liệu mới từ thư mục gốc repo:
 
 ```powershell
 node self-host/repo-backup.mjs export
-git add data/team-backup.cuboid.enc data/team-backup.cuboid.enc.json
+git add data/team-backup.cuboid.enc data/team-backup.cuboid.enc.json data/team-data-release.json
 git commit -m "Update encrypted team data snapshot"
 git push origin main
 ```
 
-Cũng có thể mở `self-host/BackupGitHub.cmd` để tạo snapshot trước khi commit/push.
+Cũng có thể mở `self-host/BackupGitHub.cmd` để tạo snapshot trước khi commit/push. Lệnh export tạo manifest `data/team-data-release.json` và đánh dấu máy xuất đã có phiên bản này. Khóa vẫn gửi riêng, không nằm trên GitHub.
 
 ## Khôi phục dữ liệu từ GitHub
 
@@ -31,14 +33,15 @@ Trên **máy mới, chưa có DB**: clone repo, cài Node.js 24, chép riêng kh
 
 ```powershell
 npm ci
-node self-host/repo-backup.mjs restore-new
 node self-host/build.mjs
 .\self-host\StartHub.cmd
 ```
 
-`restore-new` từ chối ghi đè DB hoặc tệp đã có. Sau khôi phục, đăng nhập bằng mật khẩu tại thời điểm sao lưu. Khóa giải mã không phải mật khẩu đăng nhập ứng dụng.
+Server tự khôi phục phiên bản dữ liệu được công bố trước khi mở cổng. Sau khôi phục, đăng nhập bằng mật khẩu tại thời điểm sao lưu. Khóa giải mã không phải mật khẩu đăng nhập ứng dụng. Lệnh thủ công `restore-new` vẫn chỉ dùng cho máy chưa có DB.
 
-Trên **máy đã có DB**: chạy `node self-host/repo-backup.mjs unpack` để giải mã thành một bản sao trong `self-host/data/backups/github-restored-*`. Sau đó dùng quy trình [khôi phục đầy đủ](self-host/README.md#dữ-liệu-và-sao-lưu): dừng server, chạy `node self-host/admin.mjs restore "<thư mục vừa giải mã>" KHOI_PHUC`, rồi mở lại server. Giải mã và push không tự triển khai mã mới hoặc thay dữ liệu đang chạy.
+Trên **máy đã có DB**, mở `self-host/PullAndUpdateLocal.cmd`: script pull bằng `--ff-only`, build, khởi động lại app và áp dụng bản dữ liệu mới. Tunnel đang chạy được giữ nguyên. Có thể làm thủ công bằng `git pull --ff-only`, `node self-host/build.mjs`, rồi `node self-host/launcher.mjs restart-app --no-tunnel`. Chỉ pull khi server còn đang chạy chưa thay DB ngay.
+
+DB/tệp cũ được lưu nguyên trong `self-host/data/backups/before-repo-update-*`. Nếu thiếu khóa, sai checksum, SQLite lỗi hoặc còn server mở DB, quá trình cập nhật dừng trước khi thay DB. Có nhật ký để khôi phục thao tác thay thế bị gián đoạn. Dùng quy trình [khôi phục đầy đủ](self-host/README.md#dữ-liệu-và-sao-lưu) khi cần quay lại bản cũ; marker phiên bản dữ liệu được giữ nên lần mở tiếp theo không tự áp dụng lại cùng snapshot.
 
 Bản mới đã [triển khai ngày 26/10/2026](PENDING_DEPLOY.md), gồm Tool_QC cơ bản trước QC chi tiết. Sản lượng và KPI cũ giữ nguyên. **Weekly Report, UI danh sách chưa gửi và KPI theo mốc Datumaro + ID mới đã triển khai**: Lead xác nhận file ban đầu, file sau bổ sung ID mới; Daily Report nhập ID đã làm tới tự tính cuboid và gợi ý ID đủ KPI theo đúng người, đúng ngày. Xem [hướng dẫn bộ đếm](self-host/tool-qc/README.md). Link Internet hiện tại luôn nằm trong `self-host/data/public-url.txt` trên máy host.
 

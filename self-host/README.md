@@ -37,7 +37,11 @@ Mở `StopHub.cmd` để dừng cả ứng dụng và tunnel. Tệp dữ liệu 
 
 ## Dữ liệu và sao lưu
 
-GitHub chỉ theo dõi mã nguồn và các tệp được commit; DB đang chạy được bỏ qua trong `.gitignore`. Bản sao trên GitHub ở `data/team-backup.cuboid.enc`, đã mã hóa AES-256-GCM. Khóa giải mã ở `.runtime/repo-backup-key.json`, giữ riêng trên máy và không commit. Mở `BackupGitHub.cmd` hoặc chạy `node self-host/repo-backup.mjs export` từ gốc repo để xuất bản mới, rồi commit/push hai tệp `data/team-backup.cuboid.enc*`. Xem [cách khôi phục từ GitHub](../README.md#khôi-phục-dữ-liệu-từ-github). Đây là snapshot, chưa tự đồng bộ các báo cáo phát sinh sau thời điểm xuất.
+GitHub chỉ theo dõi mã nguồn và snapshot mã hóa; DB đang chạy được bỏ qua trong `.gitignore`. Bản sao trên GitHub ở `data/team-backup.cuboid.enc`, mã hóa AES-256-GCM. Khóa giải mã ở `.runtime/repo-backup-key.json`, giữ riêng và không commit. Mở `BackupGitHub.cmd` hoặc chạy `node self-host/repo-backup.mjs export` từ gốc repo, rồi commit/push cả `data/team-backup.cuboid.enc`, `data/team-backup.cuboid.enc.json` và `data/team-data-release.json`.
+
+Máy host mở `PullAndUpdateLocal.cmd` để pull, build và khởi động lại app. Khi khởi động, server tự kiểm tra snapshot, sao lưu DB/tệp hiện tại vào `data/backups/before-repo-update-*`, rồi thay bằng bản được công bố. Mỗi phiên bản chỉ thay một lần; những lần khởi động tiếp theo giữ báo cáo mới. Máy xuất snapshot được đánh dấu đã có phiên bản đó. Chỉ pull chưa thay DB khi app vẫn đang chạy. Tunnel hiện tại được giữ khi dùng script cập nhật local.
+
+Đây là thay toàn bộ theo snapshot, không tự gộp hai DB: dữ liệu và mật khẩu nhập/đổi ở máy đích sau thời điểm snapshot sẽ chỉ còn trong bản sao DB cũ. Push chỉ sửa code không thay DB nếu manifest dữ liệu không đổi. Thiếu khóa hoặc sai checksum sẽ chặn khởi động trước khi thay DB. Xem [cách nhận dữ liệu từ GitHub](../README.md#khôi-phục-dữ-liệu-từ-github).
 
 `data/cuboid.sqlite` lưu nghiệp vụ và tài khoản. `data/files` lưu tệp minh chứng. Dữ liệu Sheets đã nhập một lần: 10 nhân sự, 9 task, 18 daily report, 27 bản ghi điểm danh. Tổng sản lượng 20/10/2026 là **5.520**, 21/10/2026 là **11.280 cuboid**; đã sửa tháng điểm danh theo xác nhận của Khôi. Chưa có đồng bộ Sheets tự động.
 

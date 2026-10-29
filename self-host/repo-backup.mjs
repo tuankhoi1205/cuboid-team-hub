@@ -65,7 +65,12 @@ async function main(){
   const repositoryData=resolve(root,"../data");if(keyFile===repositoryData||keyFile.startsWith(repositoryData+sep))throw new Error("Keep the key outside the tracked data directory");
   const output=execFileSync(process.execPath,[join(root,"admin.mjs"),"backup"],{env:{...process.env,HUB_DATA_DIR:data},encoding:"utf8",windowsHide:true});
   const backupDir=output.trim().replace(/^Full backup saved: /,"");if(!resolve(backupDir).startsWith(join(data,"backups")+sep))throw new Error("Unexpected full backup directory");
-  const info=await packBackup({backupDir,archiveFile,keyFile});await writeFile(archiveFile+".json",JSON.stringify({...info,sha256:digest(await readFile(archiveFile))},null,2)+"\n");console.log(JSON.stringify({archiveFile,keyFile,...info.summary,keyId:info.keyId},null,2));
+  const info=await packBackup({backupDir,archiveFile,keyFile});await writeFile(archiveFile+".json",JSON.stringify({...info,sha256:digest(await readFile(archiveFile))},null,2)+"\n");
+  // A custom export is just a backup; only the standard Git snapshot publishes a release.
+  if(archiveFile===resolve(root,"../data/team-backup.cuboid.enc")){
+   const {publishDataRelease}=await import("./repo-data-update.mjs");await publishDataRelease({root,dataDir:data,archiveFile,info});
+  }
+  console.log(JSON.stringify({archiveFile,keyFile,...info.summary,keyId:info.keyId},null,2));
  }else if(command==="inspect")console.log(JSON.stringify(await inspectBackup(archiveFile),null,2));
  else if(command==="unpack")console.log("Full backup unpacked: "+await unpackBackup({archiveFile,keyFile,backupRoot:join(data,"backups")}));
  else if(command==="restore-new"){
