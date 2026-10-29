@@ -125,3 +125,59 @@ Tệp minh chứng nằm trong `self-host/data/files`; bản JSON chỉ chứa m
 - Migration schema tại `drizzle/`. Dữ liệu nhập tại `data/initial-import.json`, chỉ nạp ở backend trong thiết lập lần đầu.
 - Build: `node self-host/build.mjs`. Kiểm tra TypeScript, nghiệp vụ và `node --test tests/self-host.test.mjs` sau khi build.
 - Đường dẫn miễn phí thay đổi khi tunnel được tạo lại; máy phải bật, có mạng và không ngủ để team truy cập. Chưa cài tự khởi động cùng Windows.
+
+
+## Hỏi đáp và câu hỏi thường gặp
+
+Các nội dung Q&A đã được Lead duyệt nằm trong dữ liệu ứng dụng và bản sao mã hóa; không đưa nội dung hướng dẫn nội bộ cụ thể vào tài liệu công khai.
+
+Mở **Hỏi đáp** ở thanh bên. Thành viên tìm từ khóa trước khi đặt câu hỏi; tìm kiếm hỗ trợ tiếng Việt không dấu và tìm cả tiêu đề, nội dung hỏi/trả lời, chủ đề, Job/Object ID/frame đã ghi. Có bộ lọc chủ đề, Chờ trả lời / Đã có trả lời / Đã giải đáp / Thường gặp và Câu hỏi của tôi.
+
+Bấm **Đặt câu hỏi**, nhập tiêu đề, mô tả vấn đề, chủ đề và Job/Object ID/frame nếu có. Mọi thành viên đang hoạt động đều đọc và trả lời được. Tác giả hoặc Lead bấm **Chọn làm câu trả lời** để đánh dấu đã giải đáp; câu trả lời đó được đưa lên trước. Lead bấm **Đánh dấu thường gặp** sau khi đã chọn câu trả lời để đưa vào khối tra cứu chung. Có thể mở lại khi cần trao đổi tiếp.
+
+Chỉ tác giả hoặc Lead được sửa câu hỏi/câu trả lời; hệ thống chặn ghi đè phiên bản cũ. Sửa nội dung câu hỏi hoặc câu trả lời đang được chọn sẽ mở lại và bỏ đánh dấu thường gặp để xác nhận lại. Nội dung được lưu trong SQLite, đi kèm bản sao lưu/khôi phục hiện có. Trang này dùng nội bộ sau đăng nhập; không có bot AI hoặc gọi API CVAT. Không nạp câu hỏi mẫu vào DB thật.
+
+## Weekly Report tự tổng hợp từ Daily Report
+
+Báo cáo lịch sử đã được bổ sung theo số liệu Lead xác nhận. Khối lượng QC được chấp nhận tính KPI vẫn lưu là QC, không tạo kết quả kiểm tra hoặc quality. ID cuối, Job, giờ làm và số bài chưa được cung cấp vẫn để trống. Các số ước lượng có ghi chú riêng; lịch/mức KPI và ngày miễn được giữ nguyên.
+
+Bản mới có tab tổng hợp tuần, KPI từng ngày, điểm danh/tác phong và lượt QC/chất lượng. Chọn tuần Thứ Hai–Chủ Nhật và toàn team hoặc từng người, rồi bấm **Excel báo cáo tuần**. Không cần viết Weekly Report thủ công trước.
+
+KPI tuần là tổng KPI từng ngày của đúng người đó: áp dụng mức riêng theo ngày hiệu lực, lịch thứ Bảy cách tuần, Chủ nhật và ngày miễn KPI. Ví dụ hai ngày 1.200 và ba ngày 600 cho KPI tuần 4.200. Bảng tổng hợp và Excel chỉ có **một cột KPI chung**, sau tên/vai trò, rồi các cột tiến độ T2–T6 và T7 khi là tuần làm thứ Bảy. QA/QC có KPI dạng `600/2`: 600 cuboid theo mức Lead đặt và 2 bài cần QC mỗi ngày. Nếu mức đổi trong tuần, một ô ghi các mức và khoảng ngày áp dụng. Ngày chưa gửi hoặc chưa đến để trống tiến độ. Bảng chi tiết KPI từng ngày vẫn giữ số liệu ngày để đối chiếu; việc gộp cột không đổi công thức hay sản lượng.
+
+Tiến độ ngày của QA/QC ghi `600/2`, nghĩa là 600 cuboid annotation và 2 Job khác nhau đã QC trong ngày. Lượt QC tuần đếm từng lượt đã ghi kết quả, gồm kiểm lại; phân công chưa thực hiện chưa tính. Đã bỏ các cột KPI ngày chốt, Job đã QC theo tuần và Số kiểm lần đầu. Quality dùng kết quả QC lần đầu, không cộng trùng lượt sửa hay trộn ID với cuboid. Thiếu mẫu số thì để trống.
+
+Nghỉ quy đổi = nghỉ phép cả ngày + vắng cả ngày + 0,5 × số lần nghỉ nửa ngày. Một ngày và một nửa ngày hiển thị 1,5. Rework mỗi người mỗi ngày có lỗi tính một lần.
+
+Excel có bảng tổng hợp, KPI từng ngày, log QC/chất lượng, điểm danh/tác phong và công việc trong tuần; tiêu đề/bộ lọc, cố định tên/vai trò và dòng tổng có công thức. Có thể bổ sung dữ liệu còn thiếu trong Excel; sửa file không tự ghi vào DB. KPI trong ứng dụng đổi bằng chức năng chỉnh KPI của Lead.
+
+Tuần lịch sử được Lead xác nhận có thể dùng tổng đã chốt riêng. Khi chưa có phân bổ, các ô ngày để trống; không tự chia đều, sửa Daily Report hay thay mức KPI/lũy kế của các kỳ khác. Tổng đã chốt nằm trong SQLite và bản sao mã hóa.
+
+## KPI từ Datumaro và hướng dẫn mốc ID
+
+Đã triển khai ngày 26/10/2026. Khi giao Job, mở chi tiết Task → **Cuboid theo ID / KPI**, tải Datumaro trước khi annotator làm và xác nhận file ban đầu. Các file sau chỉ bổ sung ID mới; số cuboid của ID cũ giữ theo file đầu dù file sau giảm do outside. Ví dụ 3.500 ban đầu, file sau 2.700 có 200 mới thì bảng tính là 3.700. Một cặp ID/frame trong Datumaro tính một cuboid; không nhân 0,85, không cộng trùng qua các lần tải.
+
+Mỗi ngày thành viên nhập **ID đã làm tới** là ID cuối đã hoàn thành liên tục của Job. Hệ thống cộng số cuboid của từng ID sau mốc báo ngày trước đến mốc hôm nay. Thẻ hướng dẫn hiện **Để đủ KPI hôm nay: làm tới ID X**, dựa trên KPI của đúng người, đúng ngày và sản lượng các bài khác. Nếu file chưa đủ ID/khối lượng, hệ thống báo cần bổ sung thay vì ước lượng mốc.
+
+ID mới giữ số lớn nhất đã thấy trước khi báo hoàn thành; khi đã báo, phần sửa lại không cộng thêm. Báo cáo đã chốt giữ snapshot, không đổi khi tải file sau. Các KPI và công thức báo cáo cũ giữ nguyên. File phải cùng Job, cùng frame và ID ổn định; đổi số ID/gộp/xóa/tách cần đối chiếu trước. File ban đầu bị thiếu outside từ trước không khôi phục được bằng cách này. Không gọi API CVAT.
+## KPI tuần của thành viên và KPI lũy kế của Lead
+
+Thành viên (Annotator và QA/QC) xem **KPI tuần này** ở Tổng quan và Daily Report, chỉ của bản thân. Tuần tính từ thứ Hai đến Chủ nhật, bắt đầu lại mỗi thứ Hai. Sản lượng chỉ cộng Daily Report đã gửi trong tuần đến hôm nay, không cộng lại tuần trước, nháp, giờ QC hoặc rework.
+
+Mục tiêu là tổng KPI của cả tuần: cộng mức riêng theo từng ngày, lịch thứ Bảy luân phiên và ngày miễn KPI. Ví dụ tuần 26/10–01/11 nghỉ thứ Bảy có 5 ngày: 1.200/ngày là 6.000, hoặc 600/ngày là 3.000; nếu có thay đổi giữa tuần thì cộng từng mức ngày tương ứng.
+
+Chỉ Lead xem bảng KPI lũy kế từ ngày bắt đầu theo dõi. API và Excel Daily Report của thành viên cung cấp KPI tuần; yêu cầu lũy kế bị từ chối. Lead vẫn xuất được lũy kế. Lịch sử Daily Report và sản lượng đã lưu được giữ nguyên.
+## Ma trận QC như Excel
+
+Trong QA/QC, chọn **Ghi kết quả → Ma trận ID × Frame → Mở rộng bảng**. Mỗi dòng là một Object ID, mỗi cột là frame; ba cột đầu được cố định khi cuộn ngang. Chọn một ô để đọc cảnh báo Tool_QC, hoặc kéo nhiều frame trên cùng ID để tạo một log cho cả vùng. Có thể chỉnh frame đầu/cuối và ghi nhiều log trên cùng ID. **Lưu log vào nháp** lưu ngay để quay lại tiếp tục; **Hoàn tất & lưu log QC** mới gửi cho annotator.
+
+**Xuất Excel ma trận** tải bảng đã lưu với mã/màu lỗi, viền trạng thái sửa, bảng log (một dòng cho một phạm vi) và kết quả kiểm của từng ID. Khi đang QC, nút xuất lấy nháp đã lưu. Annotator chỉ xem/xuất kết quả đã hoàn tất của bản thân và xác nhận sửa một lần cho mỗi log phạm vi. Cảnh báo tool không tự tạo rework; mỗi người mỗi ngày QC có lỗi vẫn chỉ cộng một rework.
+
+Đẩy mã nguồn lên GitHub không kèm DB và file công ty. Khi chuyển sang máy host khác, chuyển bản sao lưu đầy đủ của `self-host/admin.mjs backup` riêng và khôi phục theo hướng dẫn self-host; giữ dữ liệu thô ngoài Git.
+## Giao task kèm Datumaro và mốc ID đủ KPI
+
+Trong **Giao task**, chọn dự án cuboid, nhập Task/Job và người làm. Phần **File Datumaro ban đầu của Job** nhận JSON/ZIP. Chọn file rồi bấm **Đếm ID và cuboid** để xem tổng ID, tổng cuboid, số frame và bảng số cuboid từng ID. Có nút Excel theo ID. Chỉ xử lý file trên máy host, không kết nối CVAT công ty.
+
+Đối chiếu đúng Job/Object ID và xác nhận đây là file xuất trước khi annotator làm. Bấm **Lưu thay đổi** để lưu task và mốc ban đầu cùng một lần. Khối lượng/số frame được điền từ file. Đóng form trước khi lưu chưa tạo task; có thể mở lại, nhập cùng Job và chọn **Tiếp tục file đã đếm cho Job này**. File đang xem trước chỉ Lead thấy. Job đã có bảng đếm giữ nguyên mốc ban đầu; file sau dùng cập nhật ID mới.
+
+Annotator thấy **Hôm nay làm tới ID bao nhiêu?** ở Tổng quan, Dự án & Task và chi tiết bài, đồng thời thấy gợi ý trong Daily Report. Mốc dùng số cuboid của từng ID, ID đã báo các ngày trước, KPI riêng theo ngày, các bài khác đã gửi, lịch thứ Bảy luân phiên và ngày miễn KPI. Nếu Job còn thiếu khối lượng, ghi rõ số còn thiếu. Nhập ID cuối đã hoàn thành liên tục trong Daily Report để tính sản lượng; rework không cộng lại ID cũ. KPI/báo cáo đã lưu không tự tính lại khi thêm file.

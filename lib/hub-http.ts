@@ -5,6 +5,9 @@ import {dailyReportWritable} from "./daily-reports.ts";
 import { previousWorkday } from "./kpi.ts";
 import { reportSheets } from "./report-export.ts";
 import { evaluationSheets } from "./evaluation.ts";
+import {weeklySummarySheets} from "./weekly-summary.ts";
+import {offlineCsv} from "./qc-offline.ts";
+import {offlineWorkbook} from "./qc-offline-excel.ts";
 
 export type HubRuntime = { DB: import("./domain.ts").Database; BUCKET?: { put(key:string,body:ArrayBuffer,options?:unknown):Promise<unknown>; get(key:string):Promise<{body:BodyInit}|null>; delete(key:string):Promise<unknown> }; LEAD_EMAIL:string; backupExtra?:Record<string,unknown>; authenticate(req:Request):Promise<import("./domain.ts").Identity|null>; now?:()=>Date; afterMutation?(action:string,result:any,me:any,body:any,req:Request):Promise<any>; };
 const responseHeaders = { "Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff", "Referrer-Policy": "same-origin" };
@@ -27,10 +30,23 @@ export async function handleHub(req: Request, env: HubRuntime) {
     if (req.method === "POST" && action === "activate") return json(await hub.activate(identity));
     const me = await hub.current(identity);
     await hub.ensureAttendanceDefaults();
+    if(req.method==="GET"&&action==="qc-offline-export"){
+      const sessionId=url.searchParams.get("id")||"",visible=await hub.visible(me);ensure(visible.some(r=>r.id===sessionId&&r.kind==="qc-session"),"Không có quyền xem log này",403);
+      const session=await hub.get(sessionId,"qc-session"),result=session.data.offlineResult;ensure(result,"Phiên không có file QC offline",404);
+      const format=url.searchParams.get("format"),excel=format==="xlsx",csvFormat=format==="csv";
+      return new Response((excel?offlineWorkbook(result,session.data.offlineContext):csvFormat?offlineCsv(result,session.data.offlineContext):JSON.stringify(result,null,2)) as BodyInit,{headers:{...responseHeaders,"Content-Type":excel?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":csvFormat?"text/csv;charset=utf-8":"application/json","Content-Disposition":`attachment; filename="Job-${session.data.jobId||"QC"}.qc-result.${excel?"xlsx":csvFormat?"csv":"json"}"`}});
+    }
+    if(req.method==="GET"&&action==="kpi-summary")return json(await hub.kpiSummary(me,url.searchParams.get("period")||undefined,url.searchParams.get("member")||undefined));
     if(req.method==="GET"&&action==="evaluation")return json(await hub.evaluation(me,Object.fromEntries(url.searchParams)));
+    if(req.method==="GET"&&action==="weekly-summary")return json(await hub.weeklySummary(me,url.searchParams.get("member")||(me.role==="Lead"?"team":me.id),url.searchParams.get("week")||today(hub.now)));
     if (req.method === "GET" && action === "aggregate") return json(await hub.aggregate(me, url.searchParams.get("member") || me.id, url.searchParams.get("week") || today()));
     if (req.method === "GET" && action === "export") {
       const kind = url.searchParams.get("kind") || "task";
+      if(kind==="weekly-summary"){
+        const data=await hub.weeklySummary(me,url.searchParams.get("member")||(me.role==="Lead"?"team":me.id),url.searchParams.get("week")||today(hub.now)),sheets=weeklySummarySheets(data),excel=url.searchParams.get("format")==="xlsx";
+        await hub.db.batch([hub.audit(me.id,"Xuất Weekly Report từ Daily Report","weekly-summary",null,{start:data.start,end:data.end,asOf:data.asOf,members:data.rows.length})]);
+        return new Response((excel?xlsx(sheets):csv(sheets[0].rows)) as BodyInit,{headers:{...responseHeaders,"Content-Type":excel?"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":"text/csv;charset=utf-8","Content-Disposition":`attachment; filename="Weekly_Report_${data.start}_${data.end}.${excel?"xlsx":"csv"}"`}});
+      }
       if(kind==="evaluation") {
         const result=await hub.evaluation(me,Object.fromEntries(url.searchParams)),sheets=evaluationSheets(result),excel=url.searchParams.get("format")==="xlsx";
         await hub.db.batch([hub.audit(me.id,"Xuất đánh giá team","evaluation",null,{from:result.from,to:result.to,members:result.rows.length})]);
@@ -57,7 +73,10 @@ export async function handleHub(req: Request, env: HubRuntime) {
       const members=await hub.members(),all=await hub.visible(me),weekly:Record<string,any>={};
       if(kind==="weekly")for(const r of records)if(!r.data.snapshot)weekly[r.id]=await hub.aggregate(me,r.owner_id!,r.date!);
       const kpiMembers=members.filter(m=>m.state==="active"&&(m.role!=="Lead"||records.some(r=>r.owner_id===m.id))&&((me.role==="Lead"&&!personalDaily)||m.id===me.id)&&(!url.searchParams.get("member")||m.id===url.searchParams.get("member")));
-      const sheets=reportSheets(kind,records,all,members,weekly,{kpiMembers,asOf:to||today(),morningDate,productionDate});
+      const kpiPeriod=url.searchParams.get("kpiPeriod")||(me.role==="Lead"?"cumulative":"weekly");
+      ensure(["weekly","cumulative"].includes(kpiPeriod),"Kỳ KPI không hợp lệ");
+      ensure(kpiPeriod!=="cumulative"||me.role==="Lead","Chỉ Lead được xem KPI lũy kế",403);
+      const sheets=reportSheets(kind,records,all,members,weekly,{kpiMembers,kpiPeriod:kpiPeriod as "weekly"|"cumulative",asOf:to||today(hub.now),morningDate,productionDate});
       const excel = url.searchParams.get("format") === "xlsx";
       await hub.db.batch([hub.audit(me.id, "Xuất báo cáo " + kind, "export", null, { count: records.length, filters: Object.fromEntries(url.searchParams) })]);
       return new Response((excel ? xlsx(sheets) : csv(sheets[0].rows)) as BodyInit, { headers: { ...responseHeaders, "Content-Type": excel ? "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" : "text/csv;charset=utf-8", "Content-Disposition": `attachment; filename="cuboid-${kind}-${kind==="morning"?morningDate:today()}.${excel ? "xlsx" : "csv"}"` } });
@@ -72,7 +91,7 @@ export async function handleHub(req: Request, env: HubRuntime) {
       ensure(snap?.format === "cuboid-hub-v1" && snap.project === "appgprj_6ad97f484fe481919887bf7a05f76782", "Bản sao lưu không thuộc ứng dụng này");
       ensure(Array.isArray(snap.records) && Array.isArray(snap.members) && snap.records.length <= 50000, "Bản sao lưu không hợp lệ");
       ensure(snap.members.some((x: any) => x.id === me.id && x.auth_id === me.auth_id && x.role === "Lead" && x.state === "active"), "Bản sao lưu phải giữ tài khoản Lead hiện tại");
-      const allowed = ["project", "task", "daily", "weekly", "attendance", "request", "review", "document", "settings", "kpi-exclusion", "kpi-rate", "target", "comment", "notification", "file", "import", "legacy", "qc-session", "qc-assignment", "qc-basic", "manual-rework"];
+      const allowed = ["project", "task", "daily", "weekly", "attendance", "request", "review", "document", "settings", "kpi-exclusion", "kpi-rate", "target", "comment", "notification", "file", "import", "legacy", "qc-session", "qc-assignment", "qc-basic", "kpi-count", "kpi-source", "manual-rework", "weekly-snapshot", "qa-question", "qa-answer"];
       const stmts = [hub.db.prepare("DELETE FROM records"), hub.db.prepare("DELETE FROM members")];
       for (const m of snap.members) { z.object({ id: z.string(), name: z.string(), email: z.string().email(), role: z.enum(["Lead", "QA/QC", "Annotator"]), state: z.enum(["pending", "invited", "active", "disabled"]) }).parse(m); stmts.push(hub.db.prepare("INSERT INTO members(id,name,email,auth_id,role,state,invite_expires,created_at) VALUES(?,?,?,?,?,?,?,?)").bind(m.id, m.name, m.email, m.auth_id, m.role, m.state, m.invite_expires, m.created_at)); }
       for (const r of snap.records) { ensure(allowed.includes(r.kind) && typeof r.id === "string" && r.data && typeof r.data === "object", "Dữ liệu sao lưu bị lỗi"); stmts.push(hub.db.prepare("INSERT INTO records(id,kind,natural_key,owner_id,project_id,task_id,date,status,revision,data,created_at,updated_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?)").bind(r.id, r.kind, r.natural_key, r.owner_id, r.project_id, r.task_id, r.date, r.status, r.revision, JSON.stringify(r.data), r.created_at, r.updated_at)); }
@@ -91,7 +110,7 @@ export async function handleHub(req: Request, env: HubRuntime) {
       const file = await hub.get(action.slice(5), "file"); ensure((await hub.visible(me)).some(r => r.id === file.id), "Không có quyền truy cập tệp", 403); ensure(env.BUCKET, "Kho tệp chưa sẵn sàng", 503); const blob = await env.BUCKET.get(file.data.key); ensure(blob, "Không tìm thấy tệp. Cần khôi phục tệp R2 từ bản sao lưu.", 404);
       return new Response(blob.body, { headers: { ...responseHeaders, "Content-Type": "application/octet-stream", "Content-Disposition": `attachment; filename*=UTF-8''${encodeURIComponent(file.data.name)}` } });
     }
-    if (req.method === "POST") { const body=await readJson(req); const result=await hub.mutate(me,action,body); return json(env.afterMutation ? await env.afterMutation(action,result,me,body,req) : result); }
+    if (req.method === "POST") { const body=await readJson(req,action==="qc-offline-import"?15*1024*1024:1024*1024); const result=await hub.mutate(me,action,body); return json(env.afterMutation ? await env.afterMutation(action,result,me,body,req) : result); }
     return json({ error: "Không tìm thấy" }, 404);
   } catch (e: any) {
     if (e instanceof HubError) return json({ error: e.message }, e.status);

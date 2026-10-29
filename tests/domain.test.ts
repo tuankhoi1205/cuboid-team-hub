@@ -4,19 +4,104 @@ import { DatabaseSync } from "node:sqlite";
 import { readFileSync } from "node:fs";
 import { Hub, today, weekStart, localTime } from "../lib/domain.ts";
 import { csv, xlsx } from "../lib/export.ts";
-import { dailyKpi,cumulativeKpi,kpiDayTarget,dailyRate,previousWorkday,nextWorkday } from "../lib/kpi.ts";
+import { dailyKpi,cumulativeKpi,weeklyKpi,kpiDayTarget,dailyRate,previousWorkday,nextWorkday } from "../lib/kpi.ts";
 import { reportSheets } from "../lib/report-export.ts";
 import { qcIdRange,qcIdRows,qcLogRows } from "../lib/qc-table.ts";
 import { dailyReportRows,dailyReportWritable,dailyReportCompletion } from "../lib/daily-reports.ts";
 import { attendanceSummary } from "../lib/attendance-summary.ts";
 import { taskActivity,taskActivityTitle } from "../lib/task-activity.ts";
-import { buildTeamEvaluation,evaluationSheets } from "../lib/evaluation.ts";
+import { buildTeamEvaluation,evaluationSheets,evaluationTotals } from "../lib/evaluation.ts";
 import {reportEndId} from "../lib/report-progress.ts";
 import {dailyQcApproved,reportQcKey,reportQcApprovalStatements} from "../lib/report-qc.ts";
 import {taskFrameCount} from "../lib/task-frames.ts";
 import {pendingRepairWork,repairProgress} from "../lib/repair-progress.ts";
 import {cuboidsFromIds} from "../lib/report-production.ts";
 import {qcJobState,qcClearedThrough} from "../lib/qc-jobs.ts";
+import {keyframeRange,keyframeQuantity,keyframeComparisons} from "../lib/keyframe-kpi.ts";
+import {buildWeeklySummary,weeklySummarySheets} from "../lib/weekly-summary.ts";
+
+test("weekly KPI resets on Monday, sums dated personal rates/exclusions, and excludes prior weeks, drafts, future production and QC",async()=>{
+ const {hub,ann}=await fixture(),all=await hub.rows(),task=all.find(r=>r.kind==="task"&&r.data.assigneeId===ann.id)!;
+ const report=(id:string,date:string,quantity:number,status="submitted"):any=>({id,kind:"daily",owner_id:ann.id,date,status,data:{lines:[{taskId:task.id,activity:"annotation",quantity,rework:4000},{taskId:task.id,activity:"qc",quantity:9000}]}});
+ const rows:any[]=[...all,report("prior-week","2026-10-24",9999),report("monday","2026-10-26",1000),report("thursday","2026-10-29",700),report("draft","2026-10-28",8888,"draft"),report("future","2026-10-30",9999),{kind:"kpi-rate",owner_id:ann.id,date:"2026-10-27",status:"active",data:{quantity:600}},{kind:"kpi-rate",owner_id:ann.id,date:"2026-10-30",status:"active",data:{quantity:900}},{kind:"kpi-exclusion",owner_id:ann.id,date:"2026-10-28",status:"active",data:{}}];
+ const k=weeklyKpi(ann.id,rows,"2026-10-29");assert.equal(k.start,"2026-10-26");assert.equal(k.end,"2026-11-01");assert.equal(k.quantity,1700);assert.equal(k.target,3300);assert.equal(k.targetToDate,2400);assert.equal(k.days,4);assert.equal(k.currentRate,600);assert.equal(k.remaining,1600);
+ assert.equal(weeklyKpi(ann.id,rows,"2026-11-02").quantity,0);assert.equal(weeklyKpi(ann.id,rows,"2026-11-02").target,5400); // Working Saturday 07/11, 6 × 900.
+ const sheets=reportSheets("daily",rows.filter(r=>r.kind==="daily"),rows,await hub.members(),{}, {kpiMembers:[ann],kpiPeriod:"weekly",asOf:"2026-10-29"});
+ assert.ok(!sheets.some(s=>s.name==="KPI luy ke"));const row=sheets.find(s=>s.name==="KPI tuan")!.rows[1];assert.equal((row[6] as any).value,1700);assert.equal((row[7] as any).value,3300);assert.equal(sheets.find(s=>s.name==="Lich KPI")!.rows.length,8);
+});
+
+test("KPI summaries expose weekly totals to members and reserve cumulative totals for Lead",async()=>{
+ const {hub,lead,ann,qa}=await fixture();
+ for(const actor of [ann,qa]){
+  const result=await hub.kpiSummary(actor);assert.equal(result.period,"weekly");assert.deepEqual(result.rows.map(r=>r.memberId),[actor.id]);
+  await assert.rejects(()=>hub.kpiSummary(actor,"cumulative"),/Chỉ Lead/);await assert.rejects(()=>hub.kpiSummary(actor,"weekly","team"),/bản thân/);
+  const state=await hub.state({userId:actor.auth_id!,email:actor.email});assert.equal(state.kpiSummary!.period,"weekly");
+ }
+ assert.equal((await hub.kpiSummary(lead)).period,"cumulative");assert.equal((await hub.kpiSummary(lead)).start,"2026-10-20");assert.equal((await hub.kpiSummary(lead,"weekly",ann.id)).rows.length,1);
+});
+
+test("weekly report rolls Daily Reports into personal daily KPI, unique QC Jobs, rework dates, half-day leave and first-pass ID quality",async()=>{
+ const {hub,lead,ann,qa,other}=await fixture();await hub.mutate(lead,"kpi-rate",{memberId:qa.id,date:"2026-10-22",quantity:600});
+ await hub.mutate(lead,"attendance-mark",{memberId:qa.id,date:"2026-10-21",status:"leave",lateMinutes:0,conduct:"Đúng quy định"});await hub.mutate(lead,"attendance-mark",{memberId:qa.id,date:"2026-10-22",status:"half",lateMinutes:0,conduct:"Đúng quy định"});
+ const task=(await hub.rows("task")).find(t=>t.data.assigneeId===ann.id)!,review=(id:string,day:string,checks:any[],errors:any[])=>hub.insert("review",id,{mode:"daily",fixerId:ann.id,checkedAt:day+"T03:00:00Z",idChecks:checks,errors,verdict:errors.length?"changes":"passed",first:false},{owner_id:qa.id,task_id:task.id,project_id:task.project_id,date:day,status:errors.length?"changes":"passed"});
+ await hub.db.batch([review("weekly-qc-1","2026-10-20",[{objectId:"1",result:"changes"},{objectId:"2",result:"passed"}],[{objectId:"1",description:"Error"}]),review("weekly-qc-2","2026-10-21",[{objectId:"1",result:"passed"},{objectId:"2",result:"passed"},{objectId:"3",result:"passed"}],[]),hub.insert("manual-rework","weekly-manual",{},{owner_id:ann.id,date:"2026-10-22",status:"active"}),hub.insert("qc-session","weekly-assigned-only",{reviewerId:qa.id},{task_id:"unstarted-job",status:"assigned",date:"2026-10-22"}),hub.insert("daily","weekly-draft",{lines:[{taskId:task.id,activity:"annotation",quantity:99999}]},{owner_id:ann.id,date:"2026-10-22",status:"draft"})]);
+ const data=buildWeeklySummary(await hub.members(),await hub.rows(),"2026-10-24","2026-10-24"),a=data.rows.find(r=>r.memberId===ann.id)!,q=data.rows.find(r=>r.memberId===qa.id)!;
+ assert.equal(data.start,"2026-10-19");assert.equal(data.end,"2026-10-25");assert.equal(a.quantity,2040);assert.equal(a.target,6000);assert.equal(q.target,4200);assert.equal(q.daily.find(d=>d.date==="2026-10-21")!.target,1200);assert.equal(q.daily.find(d=>d.date==="2026-10-22")!.target,600);assert.equal(a.daily.find(d=>d.date==="2026-10-25")!.result,"Chưa đến ngày");
+ assert.equal(q.qcJobs,1);assert.equal(q.qcRounds,2);assert.equal(q.offEquivalent,1.5);assert.equal(a.reworkCount,2);assert.equal(a.qualityIdChecked,3);assert.equal(a.qualityIdPassed,2);assert.equal(a.quality,2/3);assert.equal(q.quality,null);assert.equal(a.daysMet,1);assert.equal(a.missingReports,3);
+ const sheets=weeklySummarySheets(data);assert.equal(sheets.length,5);assert.ok(sheets[0].rows[0].includes("Nghỉ quy đổi (ngày)"));assert.ok(sheets.every(s=>s.rows.every(row=>row.length===s.rows[0].length)));
+ await assert.rejects(()=>hub.weeklySummary(qa,"team","2026-10-19"),/Chỉ Lead/);await assert.rejects(()=>hub.weeklySummary(qa,other.id,"2026-10-19"),/Chỉ Lead/);const mine=await hub.weeklySummary(qa,qa.id,"2026-10-19");assert.equal(mine.rows.length,1);assert.equal(mine.rows[0].memberId,qa.id);
+});
+
+test("keyframe KPI counts only newly completed IDs, includes outside, freezes reports and preserves legacy quantities",async()=>{
+ const {hub,lead,ann,other}=await fixture(),template=(await hub.rows("task"))[0],taskId="keyframe-unit-job";
+ await hub.db.batch([hub.insert("task",taskId,{...template.data,assigneeId:ann.id,jobId:"7654321",quantity:null},{project_id:template.project_id})]);
+ const production={version:1,format:"cvat-backup-json",offset:1,completeOutside:true,usable:true,mapping:"ordinal",issues:[],duplicates:0,frames:3,totals:{keyframes:12,visible:6,outside:6,interpolated:0,unknown:0},ids:Array.from({length:6},(_,i)=>({id:i+1,label:"vehicle",visible:1,outside:1,keyframes:2,interpolated:0,unknown:0,firstFrame:0,lastFrame:1}))};
+ await hub.db.batch([hub.insert("kpi-source","unit-count-source",{capturedDate:"2026-10-22",fileHash:"old-hash",runId:"unit-run",production},{owner_id:ann.id,task_id:taskId,project_id:template.project_id,status:"active"})]);
+ await hub.mutate(lead,"daily",{memberId:ann.id,date:"2026-10-21",submit:true,lines:[{taskId,endId:"2",minutes:120,quantity:300,rework:0}]});
+ const body={memberId:ann.id,date:"2026-10-22",submit:true,lines:[{taskId,endId:"4",productionMethod:"keyframe-v1",countSourceId:"unit-count-source",minutes:120,quantity:99999,rework:1000}]};
+ const result=await hub.mutate(ann,"daily",body),saved=await hub.get(result.id!);let line=saved.data.lines[0];
+ assert.equal(line.quantity,4);assert.equal(line.idCount,2);assert.equal(line.productionFactor,undefined);assert.equal(line.keyframeSnapshot.start,3);assert.equal(line.keyframeSnapshot.end,4);assert.equal(line.keyframeSnapshot.outside,2);assert.equal(line.keyframeSnapshot.fileHash,"old-hash");
+ const prior=(await hub.rows("daily")).find(r=>r.date==="2026-10-21"&&r.owner_id===ann.id)!;assert.equal(prior.data.lines[0].quantity,300);
+ const source=await hub.get("unit-count-source");await hub.db.batch([hub.replace(source,{...source.data,fileHash:"new-hash",production:{...production,ids:production.ids.map(r=>({...r,keyframes:9,visible:8}))}})]);
+ await hub.mutate(ann,"daily",{...body,id:saved.id,revision:saved.revision,lines:[{...body.lines[0],quantity:12345,issue:"Only change note"}]});
+ line=(await hub.get(saved.id)).data.lines[0];assert.equal(line.quantity,4);assert.equal(line.keyframeSnapshot.fileHash,"old-hash");
+ await assert.rejects(()=>hub.mutate(ann,"daily",{...body,id:saved.id,lines:[{...body.lines[0],endId:"1"}]}),/thấp hơn/);
+ await assert.rejects(()=>hub.mutate(ann,"daily",{...body,id:saved.id,lines:[{...body.lines[0],endId:"5",countRunId:"old-file-version"}]}),/Bảng đếm đã được cập nhật/);
+ await assert.rejects(()=>hub.mutate(other,"daily",{...body,memberId:other.id}),/nhân sự báo cáo/);
+ await assert.rejects(()=>hub.mutate(lead,"daily",{...body,date:"2026-10-21",lines:[{...body.lines[0],endId:"2"}]}),/KPI cũ/);
+ const current=await hub.get("unit-count-source");await hub.db.batch([hub.replace(current,{...current.data,capturedDate:"2026-10-23",production})]);
+ const tomorrow=new Hub(hub.db,hub.leadEmail,new Date("2026-10-23T01:00:00Z"));await tomorrow.mutate(ann,"daily",{...body,date:"2026-10-23",lines:[{...body.lines[0],endId:"6"}]});
+ const next=(await hub.rows("daily")).find(r=>r.owner_id===ann.id&&r.date==="2026-10-23")!;assert.equal(next.data.lines[0].quantity,4);assert.equal(next.data.lines[0].keyframeSnapshot.start,5);
+ await assert.rejects(()=>hub.mutate(lead,"daily",{memberId:ann.id,date:"2026-10-21",submit:true,lines:[{taskId,endId:"3",minutes:120,quantity:300,rework:0}]}),/chồng lên/);
+ await assert.rejects(()=>hub.mutate(lead,"daily",{...body,id:saved.id,lines:[{...body.lines[0],endId:"6"}]}),/chồng lên/);
+ const checks=keyframeComparisons(await hub.rows(),ann.id,taskId,production);assert.equal(checks[0].start,5);assert.equal(checks.find(r=>r.date==="2026-10-21")!.savedQuantity,300);
+});
+
+test("keyframe source must be complete, fresh and cover the final ID; zero new IDs means zero cuboids",()=>{
+ const production:any={usable:true,ids:[{id:1,keyframes:2,visible:1,outside:1,unknown:0}],offset:1};
+ let range=keyframeRange([],"a","job","2026-10-24","0");assert.equal(keyframeQuantity(production,range).quantity,0);assert.equal(keyframeQuantity(production,range).error,"");
+ range=keyframeRange([],"a","job","2026-10-24","2");assert.match(keyframeQuantity(production,range).error,/chỉ có/);
+ assert.match(keyframeQuantity({...production,usable:false},keyframeRange([],"a","job","2026-10-24","1")).error,/chưa đủ/);
+ const draft:any={id:"draft",kind:"daily",date:"2026-10-23",owner_id:"a",status:"draft",data:{lines:[{taskId:"job",endId:"100"}]}};
+ assert.equal(keyframeRange([draft],"a","job","2026-10-24","1").start,1);
+ assert.equal(keyframeRange([],"a","job","2026-10-24","0",undefined,0).start,0);
+ const unknown:any={...draft,id:"old-unknown",status:"imported",data:{lines:[{taskId:"job",quantity:900}]}};
+ assert.match(keyframeQuantity(production,keyframeRange([unknown],"a","job","2026-10-24","1")).error,/thiếu mốc ID/);
+});
+
+test("progress can be submitted while waiting for keyframe file, then settled without rewriting historical reports",async()=>{
+ const {hub,lead,ann}=await fixture(),template=(await hub.rows("task"))[0],taskId="pending-keyframe-job";
+ await hub.db.batch([hub.insert("task",taskId,{...template.data,assigneeId:ann.id,quantity:null},{project_id:template.project_id})]);
+ const body={date:"2026-10-22",submit:true,lines:[{taskId,endId:"1",productionMethod:"keyframe-v1",minutes:120,quantity:9999,rework:0}]};
+ const saved=await hub.mutate(ann,"daily",body),pending=await hub.get(saved.id!);assert.equal(pending.data.lines[0].quantity,0);assert.equal(pending.data.lines[0].productionPending,true);assert.equal(dailyKpi(pending,await hub.rows()).result,"Chờ bảng đếm");
+ const evaluation=buildTeamEvaluation(await hub.members(),await hub.rows(),"2026-10-22","2026-10-22").find(r=>r.memberId===ann.id)!;assert.equal(evaluation.kpiResult,"Chờ bảng đếm");assert.equal(evaluation.ratio,null);assert.equal(evaluationTotals([evaluation]).ratio,null);
+ const production={version:1,format:"cvat-backup-json",offset:1,usable:true,completeOutside:true,ids:[{id:1,visible:1,outside:1,keyframes:2,unknown:0}]};
+ await hub.db.batch([hub.insert("kpi-source","pending-count-source",{capturedDate:"2026-10-22",fileHash:"verified",runId:"r",production},{owner_id:ann.id,task_id:taskId,status:"active"})]);
+ const later=new Hub(hub.db,hub.leadEmail,new Date("2026-10-22T10:00:00Z"));
+ await assert.rejects(()=>later.mutate(ann,"daily",{...body,id:pending.id,lines:[{...body.lines[0],countSourceId:"pending-count-source"}]}),/17:00/);
+ await later.mutate(lead,"daily",{...body,memberId:ann.id,id:pending.id,lines:[{...body.lines[0],countSourceId:"pending-count-source"}]});
+ const settled=await hub.get(pending.id);assert.equal(settled.data.lines[0].quantity,2);assert.equal(settled.data.lines[0].productionPending,undefined);assert.equal(settled.data.lines[0].keyframeSnapshot.outside,1);
+});
 
 class SqliteD1 {
   sql = new DatabaseSync(":memory:");

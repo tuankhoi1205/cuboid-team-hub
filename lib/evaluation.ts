@@ -2,9 +2,10 @@ import type { Member,Row } from "./domain.ts";
 import { dailyKpi,dailyRate,kpiDayTarget,scheduledWorkday,KPI_START_DATE } from "./kpi.ts";
 import type { ExportSheet,FormulaCell } from "./export.ts";
 import { reworkDays } from "./qc.ts";
+import {reportedQc,reportedQcStats} from "./reported-qc.ts";
 
 export const EVALUATION_RULES=[
- ["Sản lượng","Chỉ cộng cuboid annotation trong báo cáo đã gửi, đã duyệt hoặc dữ liệu lịch sử đang giữ. Nháp, QC và khối lượng sửa lỗi không cộng thêm vào sản lượng mới."],
+ ["Sản lượng","Chỉ cộng cuboid annotation trong báo cáo đã gửi, đã duyệt hoặc dữ liệu lịch sử đang giữ. Nháp không được tính. QC và sửa lỗi không tự cộng sản lượng mới; các khối lượng được Lead xác nhận tính KPI giữ đúng số đã duyệt."],
  ["KPI","Cộng mục tiêu từng ngày trong kỳ theo lịch công ty, mức riêng và ngày miễn KPI. Lead không có bài annotation hoặc mức KPI riêng hiển thị Không áp dụng."],
  ["Task/Job hoàn thành","Mỗi cặp Task ID/Job ID được giao là một bài. Chỉ tính bài đã đạt QC và có thời điểm hoàn thành trong kỳ (UTC+7)."],
  ["Rework","Mỗi người mỗi ngày có lỗi cộng 1 rework. Cùng ngày chỉ tính 1 dù nhiều lỗi, nhiều Job hoặc nhiều log. Hôm sau còn lỗi cũ thì cộng 1 cho ngày hôm sau. Tính theo ngày QC (UTC+7), không theo ngày sản lượng."],
@@ -29,7 +30,8 @@ export function buildTeamEvaluation(members:Member[],records:Row[],from:string,t
   const jobs=[...taskMap.values()].filter(r=>r.data.assigneeId===member.id);
   const reports=records.filter(r=>r.kind==="daily"&&r.owner_id===member.id&&inRange(r.date,from,to)&&REPORT_STATES.includes(r.status));
   const cuboidLines=reports.flatMap(r=>r.data.lines||[]).filter((l:any)=>l.activity!=="qc"&&projectMap.get(taskMap.get(l.taskId)?.project_id||"")?.data.unit==="cuboid");
-  const quantity=sum(cuboidLines.map((l:any)=>n(l.quantity))),missingQuantityLines=cuboidLines.filter((l:any)=>!numeric(l.quantity)).length;
+  const pendingKeyframeReports=reports.filter(r=>(r.data.lines||[]).some((l:any)=>l.activity!=="qc"&&l.productionPending)).length;
+  const quantity=sum(cuboidLines.map((l:any)=>n(l.quantity)))+sum(reports.map(r=>reportedQc(r)?.kpiCuboids||0)),missingQuantityLines=cuboidLines.filter((l:any)=>!numeric(l.quantity)).length;
   const kpiApplicable=member.role!=="Lead"||jobs.some(t=>projectMap.get(t.project_id||"")?.data.unit==="cuboid")||records.some(r=>r.kind==="kpi-rate"&&r.owner_id===member.id&&r.status==="active"&&r.date!<=to);
   const targets=days.map(day=>kpiApplicable?kpiDayTarget(day,member.id,records):0),target=sum(targets),kpiDays=targets.filter(t=>t>0).length;
   const complete=jobs.filter(t=>t.status==="done"&&inRange(dayOf(t.data.completedAt),from,to));
@@ -48,13 +50,13 @@ export function buildTeamEvaluation(members:Member[],records:Row[],from:string,t
   const expectedDays=days.filter(day=>day>=trackingStart&&scheduledWorkday(day,settings));
   const reportDays=new Set(reports.map(r=>r.date)),attendanceDays=new Set(attendance.map(r=>r.date));
   const missingReportDays=expectedDays.filter(d=>!reportDays.has(d)).length,missingAttendanceDays=expectedDays.filter(d=>!attendanceDays.has(d)).length;
-  const notes=[!reviews.length?"Chưa có log QC trong hệ thống ở kỳ này":"",undatedRework?`${undatedRework} ghi nhận rework chưa có ngày, chưa cộng vào kỳ`:"",missingLateMinutes?`${missingLateMinutes} lượt trễ thiếu số phút`:"",missingCompletionDate?`${missingCompletionDate} bài hoàn thành thiếu ngày`:"",missingTimeLines?`${missingTimeLines} dòng thiếu thời gian`:"",missingReworkLines?`${missingReworkLines} dòng thiếu khối lượng sửa lỗi`:"",missingQuantityLines?`${missingQuantityLines} dòng thiếu sản lượng`:"",missingReportDays?`${missingReportDays} ngày chưa có báo cáo (gồm hôm nay nếu chưa gửi)`:"",missingAttendanceDays?`${missingAttendanceDays} ngày chưa có điểm danh`:""].filter(Boolean);
+  const notes=[pendingKeyframeReports?`${pendingKeyframeReports} báo cáo chờ bảng đếm, chưa kết luận KPI`:"",!reviews.length?"Chưa có log QC trong hệ thống ở kỳ này":"",undatedRework?`${undatedRework} ghi nhận rework chưa có ngày, chưa cộng vào kỳ`:"",missingLateMinutes?`${missingLateMinutes} lượt trễ thiếu số phút`:"",missingCompletionDate?`${missingCompletionDate} bài hoàn thành thiếu ngày`:"",missingTimeLines?`${missingTimeLines} dòng thiếu thời gian`:"",missingReworkLines?`${missingReworkLines} dòng thiếu khối lượng sửa lỗi`:"",missingQuantityLines?`${missingQuantityLines} dòng thiếu sản lượng`:"",missingReportDays?`${missingReportDays} ngày chưa có báo cáo (gồm hôm nay nếu chưa gửi)`:"",missingAttendanceDays?`${missingAttendanceDays} ngày chưa có điểm danh`:""].filter(Boolean);
   return {
    memberId:member.id,name:member.name,username:member.email.split("@")[0],role:member.role,state:member.state,
-   quantity,target,kpiApplicable,kpiDays,currentRate:kpiApplicable?dailyRate(member.id,to,records):null,remaining:Math.max(0,target-quantity),ratio:target?quantity/target:null,kpiResult:!kpiApplicable?"Không áp dụng":!target?"Không tính KPI":missingQuantityLines?"Thiếu dữ liệu":quantity>=target?"Đạt":"Chưa đạt",
+   quantity,target,kpiApplicable,kpiDays,pendingKeyframeReports,currentRate:kpiApplicable?dailyRate(member.id,to,records):null,remaining:Math.max(0,target-quantity),ratio:target&&!pendingKeyframeReports?quantity/target:null,kpiResult:pendingKeyframeReports?"Chờ bảng đếm":!kpiApplicable?"Không áp dụng":!target?"Không tính KPI":missingQuantityLines?"Thiếu dữ liệu":quantity>=target?"Đạt":"Chưa đạt",
    completedTasks:complete.length,completedTaskIds:new Set(complete.map(t=>String(t.data.code||t.id))).size,missingCompletionDate,
    reworkCount:reworkDates.length,reworkDates,manualReworkCount:manualReworks.length,returnLogs:returns.length,reworkedJobs:new Set(returns.map(r=>r.task_id)).size,reviewCount:reviews.length,firstPassChecked:checked,firstPassPassed:passed,firstPassRatio:checked?passed/checked:null,
-   qcPerformed:records.filter(r=>r.kind==="review"&&r.owner_id===member.id&&inRange(reviewDate(r),from,to)).length,
+   qcPerformed:days.reduce((total,day)=>{const actual=records.filter(r=>r.kind==="review"&&r.owner_id===member.id&&reviewDate(r)===day);return total+reportedQcStats(reports.find(r=>r.date===day),actual.map(r=>String(r.data.jobId||taskMap.get(r.task_id||"")?.data.jobId||r.task_id||r.id)),actual.length).rounds;},0),
    reworkQuantity:sum(cuboidLines.map((l:any)=>n(l.rework))),missingReworkLines,undatedRework,missingQuantityLines,
    fullDays,halfDays,presenceEquivalent:fullDays+halfDays*0.5,lateDays:late.length,lateMinutes,missingLateMinutes,absentDays:attendance.filter(r=>r.status==="absent").length,leaveDays:attendance.filter(r=>r.status==="leave").length,
    conductGood:attendance.filter(r=>r.data.conduct==="Đúng quy định").length,conductBad:attendance.filter(r=>r.data.conduct==="Chưa đúng quy định").length,conductUnknown:attendance.filter(r=>!["Đúng quy định","Chưa đúng quy định"].includes(r.data.conduct)).length,
@@ -63,7 +65,7 @@ export function buildTeamEvaluation(members:Member[],records:Row[],from:string,t
    draftCount:records.filter(r=>r.kind==="daily"&&r.owner_id===member.id&&r.status==="draft"&&inRange(r.date,from,to)).length,annotationMinutes,qcMinutes,missingTimeLines,
    issueReports:reports.filter(r=>r.data.blockers||(r.data.lines||[]).some((l:any)=>l.issue)).length,notes,
    sources:{
-    reports:reports.map(r=>({id:r.id,date:r.date,status:r.status,quantity:dailyKpi(r,records).quantity})).sort((a,b)=>(b.date||"").localeCompare(a.date||"")),
+    reports:reports.map(r=>({id:r.id,date:r.date,status:r.status,quantity:dailyKpi(r,records).quantity,pending:dailyKpi(r,records).pending})).sort((a,b)=>(b.date||"").localeCompare(a.date||"")),
     completed:complete.map(t=>({id:t.id,code:t.data.code,jobId:t.data.jobId||"",date:dayOf(t.data.completedAt)})),
     returns:returns.map(r=>{const t=taskMap.get(r.task_id||"");return {id:r.id,code:t?.data.code||"",jobId:t?.data.jobId||"",date:reviewDate(r),productionDate:r.data.productionDate,round:r.data.round,failed:r.data.failed,errors:(r.data.errors||[]).length,fixed:(r.data.errors||[]).filter((e:any)=>e.fixed).length};}),
     manualReworks:manualReworks.map(r=>({id:r.id,date:r.date!,reason:r.data.reason,recordedBy:members.find(m=>m.id===r.data.recordedBy)?.name||"Lead",recordedAt:r.data.recordedAt})).sort((a,b)=>b.date.localeCompare(a.date)),
@@ -74,8 +76,8 @@ export function buildTeamEvaluation(members:Member[],records:Row[],from:string,t
 }
 export type EvaluationMember=ReturnType<typeof buildTeamEvaluation>[number];
 export function evaluationTotals(rows:EvaluationMember[]) {
- const quantity=sum(rows.map(r=>r.quantity)),target=sum(rows.map(r=>r.target));
- return {members:rows.length,quantity,target,ratio:target?quantity/target:null,completedTasks:sum(rows.map(r=>r.completedTasks)),reworkCount:sum(rows.map(r=>r.reworkCount)),lateDays:sum(rows.map(r=>r.lateDays)),lateMinutes:sum(rows.map(r=>r.lateMinutes)),missingLateMinutes:sum(rows.map(r=>r.missingLateMinutes)),absentDays:sum(rows.map(r=>r.absentDays)),leaveDays:sum(rows.map(r=>r.leaveDays)),halfDays:sum(rows.map(r=>r.halfDays)),conductBad:sum(rows.map(r=>r.conductBad)),undatedRework:sum(rows.map(r=>r.undatedRework))};
+ const quantity=sum(rows.map(r=>r.quantity)),target=sum(rows.map(r=>r.target)),pendingKeyframeReports=sum(rows.map(r=>r.pendingKeyframeReports));
+ return {members:rows.length,quantity,target,pendingKeyframeReports,ratio:target&&!pendingKeyframeReports?quantity/target:null,completedTasks:sum(rows.map(r=>r.completedTasks)),reworkCount:sum(rows.map(r=>r.reworkCount)),lateDays:sum(rows.map(r=>r.lateDays)),lateMinutes:sum(rows.map(r=>r.lateMinutes)),missingLateMinutes:sum(rows.map(r=>r.missingLateMinutes)),absentDays:sum(rows.map(r=>r.absentDays)),leaveDays:sum(rows.map(r=>r.leaveDays)),halfDays:sum(rows.map(r=>r.halfDays)),conductBad:sum(rows.map(r=>r.conductBad)),undatedRework:sum(rows.map(r=>r.undatedRework))};
 }
 export type EvaluationData={from:string;to:string;rows:EvaluationMember[];totals:ReturnType<typeof evaluationTotals>};
 const percent=(formula:string,value:number):FormulaCell=>({formula,value,format:"percent"});

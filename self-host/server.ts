@@ -10,6 +10,7 @@ import { handleHub, type HubRuntime } from "../lib/hub-http.ts";
 import { SqliteStore } from "./sqlite.ts";
 import { LocalAuth, cookieValue, sessionCookie } from "./auth.ts";
 import {BasicQcService} from "./qc-basic.ts";
+import {KpiCountService} from "./kpi-count.ts";
 import schema from "../drizzle/0000_sweet_white_queen.sql?raw";
 
 const LEAD_EMAIL="26ai.khoint2@vinuni.edu.vn";
@@ -44,6 +45,7 @@ export async function createLocalApp(options:Options) {
   if(!instance){instance=randomUUID();store.sql.prepare("INSERT INTO selfhost_meta VALUES('instance',?)").run(instance);}
   const auth=new LocalAuth(store);await auth.initialize();
   const basicQc=new BasicQcService(()=>new Hub(store,LEAD_EMAIL,now()),dataDir,resolve(process.env.HUB_ROOT||"self-host"));await basicQc.initialize();
+  const kpiCount=new KpiCountService(()=>new Hub(store,LEAD_EMAIL,now()),dataDir,resolve(process.env.HUB_ROOT||"self-host"));await kpiCount.initialize();
   const refreshAttendance=()=>new Hub(store,LEAD_EMAIL,now()).ensureAttendanceDefaults();
   await refreshAttendance();
   const attendanceTimer=setInterval(()=>{void refreshAttendance().catch(e=>console.error("Không thể tạo điểm danh mặc định:",e.message));},60000);attendanceTimer.unref();
@@ -64,7 +66,7 @@ export async function createLocalApp(options:Options) {
     ensure(Array.isArray(s.members)&&s.members.length<=1000&&Array.isArray(s.records)&&s.records.length<=50000,"Bản sao lưu không hợp lệ");
     ensure(s.members.some((m:any)=>m.id===me.id&&m.role==="Lead"&&m.state==="active"),"Cần giữ tài khoản Lead hiện tại");
     const members=s.members.map((m:any)=>z.object({id:z.string().min(1).max(100),name:z.string().min(1).max(500),email:z.string().email(),role:z.enum(["Lead","QA/QC","Annotator"]),state:z.enum(["active","invited","pending","disabled"]),created_at:z.string(),invite_expires:z.string().nullable()}).parse(m));
-    const kinds=["project","task","daily","weekly","attendance","request","review","document","settings","kpi-exclusion","kpi-rate","target","comment","notification","file","import","legacy","qc-session","qc-assignment","qc-basic","manual-rework"];
+    const kinds=["project","task","daily","weekly","attendance","request","review","document","settings","kpi-exclusion","kpi-rate","target","comment","notification","file","import","legacy","qc-session","qc-assignment","qc-basic","kpi-count","kpi-source","manual-rework", "weekly-snapshot", "qa-question", "qa-answer"];
     for(const r of s.records)ensure(kinds.includes(r.kind)&&typeof r.id==="string"&&typeof r.natural_key==="string"&&r.data&&typeof r.data==="object","Bản ghi sao lưu không hợp lệ");
     store.transaction(()=>{
       store.sql.prepare("DELETE FROM auth_sessions WHERE member_id!=?").run(me.id);store.sql.exec("DELETE FROM auth_tokens; DELETE FROM records;");
@@ -97,6 +99,7 @@ export async function createLocalApp(options:Options) {
       if(u.pathname==="/auth/logout") {auth.logout(req);return redirect("/auth/login",{"Set-Cookie":sessionCookie("",secure,0)});}
       if(u.pathname==="/api/hub/restore"&&req.method==="POST") {const me=await auth.current(req);ensure(me,"Vui lòng đăng nhập",401);return await restore(req,me);}
       if(u.pathname.startsWith("/api/hub/qc-basic/")){const me=await auth.current(req);ensure(me,"Vui lòng đăng nhập",401);return await basicQc.handle(req,me);}
+      if(u.pathname.startsWith("/api/hub/kpi-count/")){const me=await auth.current(req);ensure(me,"Vui lòng đăng nhập",401);return await kpiCount.handle(req,me);}
       if(u.pathname.startsWith("/api/hub/"))return await handleHub(req,runtime);
       if(u.pathname.startsWith("/api/"))return json({error:"Không tìm thấy"},404);
       if(req.method!=="GET"&&req.method!=="HEAD")return json({error:"Phương thức không hợp lệ"},405);
@@ -122,7 +125,7 @@ export async function createLocalApp(options:Options) {
       out.writeHead(response.status,Object.fromEntries(response.headers));if(response.body)Readable.fromWeb(response.body as any).pipe(out);else out.end();
     }catch(e:any){out.writeHead(e instanceof HubError?e.status:500,{...BASE_HEADERS,"Content-Type":"application/json"});out.end(JSON.stringify({error:e instanceof HubError?e.message:"Không thể xử lý yêu cầu"}));}
   });
-  return {server,store,auth,hub,handle,instance,publicOrigin,refreshAttendance,close:async()=>{clearInterval(attendanceTimer);await basicQc.close();await new Promise<void>(resolve=>server.close(()=>resolve()));store.close();}};
+  return {server,store,auth,hub,handle,instance,publicOrigin,refreshAttendance,close:async()=>{clearInterval(attendanceTimer);await Promise.allSettled([basicQc.close(),kpiCount.close()]);await new Promise<void>(resolve=>server.close(()=>resolve()));store.close();}};
 }
 
 if(process.env.HUB_NO_LISTEN!=="1") {

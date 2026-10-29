@@ -1,0 +1,35 @@
+{
+  "name": "cuboid-qc-offline",
+  "version": "1.1.2",
+  "private": true,
+  "type": "module",
+  "description": "Cuboid QC offline — Datumaro matrix and floating QC bar",
+  "author": "Cuboid Team",
+  "main": "dist/main/main.cjs",
+  "scripts": {
+    "build": "node build.mjs",
+    "worker": "node build-worker.mjs",
+    "start": "electron .",
+    "pack": "electron-builder --dir --publish never",
+    "dist": "electron-builder --publish never",
+    "smoke": "node ../tests/qc-desktop.smoke.mjs"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.18.0",
+    "playwright": "1.62.1"
+  },
+  "build": {
+    "appId": "team.cuboid.qc",
+    "productName": "Cuboid QC",
+    "asar": true,
+    "directories": {"output": "release"},
+    "files": ["dist/**/*", "preload.cjs", "package.json"],
+    "extraResources": [{"from": "worker/qc-worker", "to": "qc-worker"}],
+    "artifactName": "Cuboid-QC-${version}-${os}-${arch}.${ext}",
+    "win": {"target": ["nsis", "zip"], "signAndEditExecutable": false},
+    "nsis": {"oneClick": false, "perMachine": false, "allowToChangeInstallationDirectory": true},
+    "mac": {"target": ["dmg", "zip"], "category": "public.app-category.productivity", "hardenedRuntime": true},
+    "linux": {"target": ["AppImage", "deb"], "category": "Office", "maintainer": "Cuboid Team"}
+  }
+}

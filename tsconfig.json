@@ -49,6 +49,10 @@
     ".wrangler",
     ".sites-runtime",
     "outputs",
+    "qc-desktop/dist",
+    "qc-desktop/worker",
+    "qc-desktop/.build",
+    "qc-desktop/release",
     "work"
   ]
 }

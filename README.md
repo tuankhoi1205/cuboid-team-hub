@@ -1,12 +1,16 @@
 # Cuboid Team Hub
 
+Chuyển sang máy host khác: xem [hướng dẫn bàn giao](CHUYEN_MAY_HOST.md). Gói Windows riêng có sẵn bản build/runtime và snapshot; bản clone GitHub cần khóa được gửi riêng.
+
+App QC offline mới nằm ở [qc-desktop](qc-desktop/README.md): mở Datumaro hoặc tạo bảng trắng, kéo chọn frame, ghi log bằng Enter, thanh nổi một ID trên CVAT, xuất Excel và hoàn tất/đổi bài với tiến độ tự lưu. App không dùng phân công hoặc đăng nhập. Web QA/QC được thu gọn thành quản lý Job, nhận kết quả và tải log; đã triển khai lên localhost ngày 28/10/2026.
+
 Bản đang sử dụng chạy độc lập trên máy Windows hiện tại. Mở **self-host/StartHub.cmd**; đăng nhập bằng tên được cấp và mật khẩu riêng. Xem [hướng dẫn tự host](self-host/README.md) và [hướng dẫn nghiệp vụ cho Lead](HUONG_DAN_LEAD.md).
 
 ## Dữ liệu trên GitHub
 
 DB hoạt động nằm ở `self-host/data/cuboid.sqlite`; các tệp đính kèm ở `self-host/data/files`. Git bỏ qua thư mục dữ liệu đang chạy, nên chỉ push code sẽ không có các báo cáo, điểm danh, phân công và log mới.
 
-Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **24/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 33 Daily Report, 127 bản ghi nghiệp vụ và 1 tệp đính kèm**. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
+Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **29/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 59 Daily Report, 281 bản ghi nghiệp vụ và 43 tệp đính kèm**, bao gồm Q&A và các cập nhật dữ liệu đã xác nhận. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
 
 **Khóa giải mã lưu riêng trên máy host:** `self-host/.runtime/repo-backup-key.json`. Khóa không được commit. Lưu thêm một bản khóa ở nơi riêng để có thể khôi phục khi chuyển máy; file mã hóa trên GitHub cần khóa này để mở.
 
@@ -36,7 +40,7 @@ node self-host/build.mjs
 
 Trên **máy đã có DB**: chạy `node self-host/repo-backup.mjs unpack` để giải mã thành một bản sao trong `self-host/data/backups/github-restored-*`. Sau đó dùng quy trình [khôi phục đầy đủ](self-host/README.md#dữ-liệu-và-sao-lưu): dừng server, chạy `node self-host/admin.mjs restore "<thư mục vừa giải mã>" KHOI_PHUC`, rồi mở lại server. Giải mã và push không tự triển khai mã mới hoặc thay dữ liệu đang chạy.
 
-Mã mới đang [chờ triển khai](PENDING_DEPLOY.md) theo yêu cầu của Lead. Giữ bản build đang phục vụ khi team đang nhập KPI.
+Bản mới đã [triển khai ngày 26/10/2026](PENDING_DEPLOY.md), gồm Tool_QC cơ bản trước QC chi tiết. Sản lượng và KPI cũ giữ nguyên. **Weekly Report, UI danh sách chưa gửi và KPI theo mốc Datumaro + ID mới đã triển khai**: Lead xác nhận file ban đầu, file sau bổ sung ID mới; Daily Report nhập ID đã làm tới tự tính cuboid và gợi ý ID đủ KPI theo đúng người, đúng ngày. Xem [hướng dẫn bộ đếm](self-host/tool-qc/README.md). Link Internet hiện tại luôn nằm trong `self-host/data/public-url.txt` trên máy host.
 
 ---
 

@@ -46,6 +46,13 @@ yarn-error.log*
 /self-host/dist/
 /self-host/.runtime/
 /self-host/node_modules/
+/self-host/data/
+**/__pycache__/
+/qc-desktop/node_modules/
+/qc-desktop/dist/
+/qc-desktop/worker/
+/qc-desktop/release/
+/qc-desktop/.build/
 
 # Live databases and decryption keys stay local. Only encrypted snapshots enter Git.
 **/repo-backup-key*.json

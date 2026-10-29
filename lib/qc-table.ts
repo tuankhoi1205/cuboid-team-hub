@@ -1,5 +1,7 @@
 export const MAX_QC_IDS=2000;
-export type QcIdCheck={objectId:string;result:""|"passed"|"changes";frameId:string;type:string;severity:"minor"|"major"|"critical";description:string;evidence:string};
+export const MAX_QC_LOGS=2000;
+export type QcFrameLog={id:string;frameId:string;frameEnd:string;code:string;type:string;severity:"minor"|"major"|"critical";description:string;evidence:string};
+export type QcIdCheck={objectId:string;result:""|"passed"|"changes";frameId:string;type:string;severity:"minor"|"major"|"critical";description:string;evidence:string;frameLogs?:QcFrameLog[]};
 export function qcIdKey(value:string){return /^\d+$/.test(value)?BigInt(value).toString():value;}
 export function qcIdRange(start:string,end:string):string[]{
  if(!/^\d{1,30}$/.test(end)||start&&!/^\d{1,30}$/.test(start))throw new Error("Phạm vi ID không hợp lệ");

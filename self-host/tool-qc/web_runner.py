@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import datumaro_qa as tool
+from keyframe_counts import count_dataset, add_count_sheet
 
 LIMIT = 30 * 1024 * 1024
 
@@ -68,7 +69,8 @@ def main():
     source, result_path, excel_path, offset = sys.argv[1:]
     config = dict(tool.DEFAULT_CONFIG, track_id_offset=int(offset))
     data, outside, outside_tracks = read_input(source)
-    normalized = Path(source).with_name('normalized.json')
+    production = count_dataset(data, int(offset))
+    normalized = Path(result_path).with_name('normalized-input.json')
     normalized.write_text(json.dumps(data, ensure_ascii=False, allow_nan=False), encoding='utf-8')
     objects, data_issues, meta = tool.load_objects(str(normalized), config)
     if meta['n_tracks'] * len(meta['frame_items']) > 500000:
@@ -85,6 +87,11 @@ def main():
     counts = {key:len(results[key]) for key, _, _ in tool.CHECKS}
     counts['data'] = len(data_issues)
     summary = dict(frames=meta['n_items'], cuboids=meta['n_objs'], tracks=meta['n_tracks'], outsideCuboids=outside, outsideTracks=outside_tracks, warnings=len(rows), affectedTracks=len({r['track'] for r in rows if r['track']}), counts=counts, trackOffset=int(offset))
+    tracks = {}
+    for obj in objects:
+        track = tracks.setdefault(str(obj.track),dict(id=str(obj.track),label=obj.label,present=set()))
+        track['present'].add(obj.frame)
+    matrix = dict(version=1,frames=sorted(set(meta['frame_items']) | {obj.frame for obj in objects}),tracks=[dict(**{k:v for k,v in track.items() if k!='present'},present=sorted(track['present'])) for track in tracks.values()])
     tool.write_report(excel_path, results, objects, meta, 'Datumaro upload', config)
     # Uploaded text remains literal in Excel; no uploaded formula is executed.
     import openpyxl
@@ -97,9 +104,10 @@ def main():
     workbook['Summary']['B3'] = 'File Datumaro đã tải lên từ web'
     workbook['Summary']['B4'] = datetime.now(timezone.utc).astimezone(timezone(timedelta(hours=7))).strftime('%d/%m/%Y %H:%M:%S UTC+7')
     workbook['Summary'].append(['Box outside không kiểm tra', outside])
-    workbook['Summary'].append(['KPI', 'Số ID làm trong ngày × frame Job × 0,85; không trừ box outside. Thống kê tool không thay sản lượng/KPI.'])
+    workbook['Summary'].append(['KPI keyframe', 'Xem Cuboid theo ID. Datumaro có thể bỏ outside: chỉ đối chiếu, chưa chốt KPI. Sản lượng cũ giữ nguyên.'])
+    add_count_sheet(workbook, production)
     workbook.save(excel_path)
-    Path(result_path).write_text(json.dumps(dict(summary=summary, config=config, rows=rows), ensure_ascii=False, allow_nan=False), encoding='utf-8')
+    Path(result_path).write_text(json.dumps(dict(summary=summary, config=config, rows=rows, production=production, matrix=matrix), ensure_ascii=False, allow_nan=False), encoding='utf-8')
     print(json.dumps(summary, ensure_ascii=False))
 
 if __name__ == '__main__':

@@ -26,6 +26,218 @@ function basicDataset(){const box=(id,track,position,scale=[4,2,1.7],rotation=[0
 async function basicRun(f,session,assignmentId,{content=JSON.stringify(basicDataset()),name="datumaro.json",reason=""}={}){const body=new FormData();body.set("assignmentId",assignmentId);body.set("trackOffset","1");body.set("reason",reason);body.set("file",new File([content],name));return f.req("/api/hub/qc-basic/run",{method:"POST",cookie:session,body});}
 async function waitBasic(f,id){for(let i=0;i<300;i++){const run=await f.app.hub.get(id);if(run.status!=="running")return run;await new Promise(r=>setTimeout(r,30));}assert.fail("Basic QC did not finish within nine seconds");}
 async function finishBasic(f,qa,assignmentId){const response=await basicRun(f,qa,assignmentId);assert.equal(response.status,202,await response.clone().text());const run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);const done=await f.req("/api/hub/qc-basic/complete",{method:"POST",cookie:qa,body:{id:run.id,reviewed:true,note:"Đã đối chiếu kết quả tool"}});assert.equal(done.status,200,await done.clone().text());return run;}
+test("historical QC KPI credits require stored Lead confirmation and survive report edits without accepting forged client credit",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-29T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),task=(await f.app.hub.rows("task")).find(t=>t.data.assigneeId==="member-1");await f.app.store.batch([f.app.hub.replace(task,{...task.data,reviewerId:"member-2"})]);
+  const activity={version:1,verifiedBy:"member-0",jobs:null,jobIds:[],cuboids:660,kpiCuboids:660,checkedIds:null,note:"Lead đã xác nhận"};
+  let response=await f.req("/api/hub/daily",{method:"POST",cookie:qa,body:{date:"2026-10-29",submit:true,qcActivity:activity,lines:[{taskId:task.id,activity:"qc",minutes:60,quantity:0,rework:0}]}});assert.equal(response.status,200,await response.clone().text());let saved=await f.app.hub.get((await response.json()).id);assert.equal(saved.data.qcActivity,undefined);
+  await f.app.store.batch([f.app.hub.insert("daily","confirmed-qc-credit",{date:"2026-10-28",lines:[{taskId:task.id,activity:"qc",minutes:null,quantity:0,rework:0}],qcActivity:activity},{owner_id:"member-2",date:"2026-10-28",natural_key:"member-2:2026-10-28",status:"imported"})]);
+  response=await f.req("/api/hub/daily",{method:"POST",cookie:lead,body:{id:"confirmed-qc-credit",memberId:"member-2",date:"2026-10-28",submit:true,qcActivity:{...activity,cuboids:99999,kpiCuboids:99999},lines:[{taskId:task.id,activity:"qc",minutes:120,quantity:0,rework:0}]}});assert.equal(response.status,200,await response.clone().text());saved=await f.app.hub.get("confirmed-qc-credit");assert.equal(saved.data.qcActivity.kpiCuboids,660);
+  const weekly=await(await f.req("/api/hub/weekly-summary?week=2026-10-26&member=member-2",{cookie:qa})).json();assert.equal(weekly.rows[0].quantity,660);assert.equal(weekly.rows[0].quality,null);assert.equal(weekly.qcEvents.length,0);assert.equal(weekly.qcReported[0].jobs,null);
+  response=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body:{id:"confirmed-qc-credit",memberId:"member-2",date:"2026-10-28",submit:true,lines:[{taskId:task.id,activity:"qc",minutes:120,quantity:0,rework:0}]}});assert.equal(response.status,403);
+ }finally{await f.close();}
+});
+
+test("team Q&A supports shared answers, owner acceptance, Lead FAQs, safe revisions and backup restore without changing KPI",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-27T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),other=await activate(f,await invite(f,lead,4));await f.app.hub.ensureAttendanceDefaults();
+  const baseline=await f.app.hub.rows(),post=(action,body,cookie=ann)=>f.req("/api/hub/"+action,{method:"POST",body,cookie}),payload={title:"Cách xử lý object bị che khuất?",content:"Job 1261, ID 20: nên xử lý như thế nào?",category:"Annotation",context:"Job 1261 · ID 20"};
+  assert.equal((await post("qa-question",payload,"")).status,401);assert.equal((await post("qa-question",{...payload,title:" "})).status,400);
+  let response=await post("qa-question",{...payload,owner_id:"member-0",frequent:true});assert.equal(response.status,200,await response.clone().text());const id=(await response.json()).id;let question=await f.app.hub.get(id);assert.equal(question.owner_id,"member-1");assert.equal(question.data.frequent,false);
+  assert.equal((await post("qa-question",{...payload,id,revision:question.revision},other)).status,403);assert.equal((await post("qa-question",{...payload,id,revision:99})).status,409);
+  assert.equal((await post("qa-frequent",{id,revision:question.revision,frequent:true})).status,403);assert.equal((await post("qa-frequent",{id,revision:question.revision,frequent:true},lead)).status,400);
+  response=await post("qa-answer",{questionId:id,content:"Đối chiếu guideline trước khi xử lý; đây là câu trả lời kiểm thử."},qa);assert.equal(response.status,200);const answerId=(await response.json()).id;let answer=await f.app.hub.get(answerId);
+  assert.equal((await post("qa-answer",{id:answerId,revision:answer.revision,questionId:id,content:"Sửa trái phép"},other)).status,403);
+  assert.equal((await post("qa-accept",{id,revision:question.revision,answerId},other)).status,403);
+  response=await post("qa-question",{...payload,title:"Câu hỏi khác cần giải đáp"},other);const second=(await response.json()).id;
+  assert.equal((await post("qa-accept",{id:second,revision:1,answerId},other)).status,400);
+  assert.equal((await post("qa-accept",{id,revision:question.revision,answerId})).status,200);question=await f.app.hub.get(id);assert.equal(question.status,"resolved");
+  assert.equal((await post("qa-frequent",{id,revision:question.revision,frequent:true},lead)).status,200);question=await f.app.hub.get(id);assert.equal(question.data.frequent,true);
+  const shared=await(await f.req("/api/hub/state",{cookie:other})).json();assert.ok(shared.records.some(r=>r.id===id));assert.ok(shared.records.some(r=>r.id===answerId));const author=shared.members.find(m=>m.id==="member-2");assert.ok(author?.name);assert.equal(author.email,undefined);assert.equal(author.auth_id,undefined);
+  response=await post("qa-answer",{id:answerId,revision:answer.revision,questionId:id,content:"Nội dung đã được sửa để đối chiếu lại."},qa);assert.equal(response.status,200);question=await f.app.hub.get(id);assert.equal(question.status,"open");assert.equal(question.data.acceptedAnswerId,null);assert.equal(question.data.frequent,false);
+  assert.equal((await post("qa-answer",{id:answerId,revision:answer.revision,questionId:id,content:"Bản sửa cũ"},qa)).status,409);
+  answer=await f.app.hub.get(answerId);assert.equal((await post("qa-answer",{id:answerId,revision:answer.revision,questionId:second,content:"Chuyển câu trả lời"},qa)).status,400);
+  assert.equal((await post("qa-accept",{id,revision:question.revision,answerId},lead)).status,200);question=await f.app.hub.get(id);
+  response=await post("qa-question",{...payload,id,revision:question.revision,content:"Tình huống đã thay đổi."});assert.equal(response.status,200);assert.equal((await f.app.hub.get(id)).status,"open");
+  for(const old of baseline)assert.deepEqual(await f.app.hub.get(old.id),old);
+  const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(snapshot.records.some(r=>r.kind==="qa-question"));assert.ok(snapshot.records.some(r=>r.kind==="qa-answer"));response=await f.req("/api/hub/restore",{method:"POST",cookie:lead,body:{confirm:"KHOI PHUC",snapshot}});assert.equal(response.status,200,await response.clone().text());assert.equal((await f.app.hub.get(answerId)).data.content,"Nội dung đã được sửa để đối chiếu lại.");
+ }finally{await f.close();}
+});
+
+test("closed weekly totals stay separate from Daily Reports, rates and other weeks, require Lead and survive backup restore",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-27T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC"));
+  await f.app.hub.ensureAttendanceDefaults();
+  const before=await f.app.hub.rows(),current=await f.app.hub.weeklySummary((await f.app.hub.members())[0],"team","2026-10-26"),totals={quantity:3840,target:3700,daysMet:3,kpiDays:4,qcRounds:0,reworkCount:1,offEquivalent:1,lateDays:0,conductBad:0,quality:.93,qualityBasis:"Guideline",qualityPassed:0};
+  const body={memberId:"member-1",week:"2026-10-19",asOf:"2026-10-24",role:"Annotator",totals},save=(cookie,body)=>f.req("/api/hub/weekly-snapshot",{method:"POST",cookie,body});
+  assert.equal((await save(ann,body)).status,403);assert.equal((await save(qa,body)).status,403);assert.equal((await save(lead,{...body,week:"2026-10-26",asOf:"2026-10-27"})).status,400);
+  let response=await save(lead,body);assert.equal(response.status,200,await response.clone().text());const id=(await response.json()).id;assert.equal((await save(lead,body)).status,200);assert.equal((await f.app.hub.get(id)).revision,1);
+  const history=await f.app.hub.weeklySummary((await f.app.hub.members())[0],"team","2026-10-19"),row=history.rows.find(r=>r.memberId==="member-1");assert.equal(row.quantity,3840);assert.equal(row.target,3700);assert.equal(row.quality,.93);assert.equal(row.offEquivalent,1);assert.equal(row.reworkCount,1);assert.ok(row.daily.every(d=>d.quantity===null&&d.target===null));assert.ok(history.work.filter(r=>r.memberId==="member-1").every(r=>r.quantity===null));
+  assert.deepEqual(await f.app.hub.weeklySummary((await f.app.hub.members())[0],"team","2026-10-26"),current);for(const old of before)assert.deepEqual(await f.app.hub.get(old.id),old);
+  const qaState=await(await f.req("/api/hub/state",{cookie:qa})).json(),annState=await(await f.req("/api/hub/state",{cookie:ann})).json();assert.ok(!qaState.records.some(r=>r.id===id));assert.ok(annState.records.some(r=>r.id===id));
+  const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();assert.ok(snapshot.records.some(r=>r.id===id));response=await f.req("/api/hub/restore",{method:"POST",cookie:lead,body:{confirm:"KHOI PHUC",snapshot}});assert.equal(response.status,200,await response.clone().text());assert.equal((await f.app.hub.get(id)).data.totals.quantity,3840);
+ }finally{await f.close();}
+});
+test("Lead previews Datumaro while assigning, atomically binds the baseline, and members receive exact daily ID goals",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-27T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),other=await activate(f,await invite(f,lead,3)),project=(await f.app.hub.rows("project")).find(r=>r.data.unit==="cuboid"),snapshot=await f.app.hub.rows("daily"),originalTasks=await f.app.hub.rows("task");
+  const dataset=(uniform=false)=>({categories:{label:{labels:[{name:"vehicle"}]}},items:Array.from({length:60},(_,frame)=>({id:"frame_"+frame,attr:{frame},annotations:Array.from({length:34},(_,track)=>({type:"cuboid_3d",label_id:0,attributes:{track_id:track}})).filter(a=>frame<(uniform?60:a.attributes.track_id===1?30:a.attributes.track_id===2?10:60))}))});
+  const preview=async(session,jobId="995500",editTaskId="",uniform=false)=>{const form=new FormData();form.set("projectId",project.id);form.set("code","");form.set("jobId",jobId);form.set("editTaskId",editTaskId);form.set("file",new File([JSON.stringify(dataset(uniform))],"baseline-datumaro.json"));return f.req("/api/hub/kpi-count/preview",{method:"POST",cookie:session,body:form});};
+  assert.equal((await preview(ann)).status,403);assert.equal((await preview(qa)).status,403);
+  const upload=await preview(lead);assert.equal(upload.status,202,await upload.clone().text());const run=await waitBasic(f,(await upload.json()).id);assert.equal(run.status,"ready",run.data.error);assert.equal(run.task_id,null);
+  assert.deepEqual(await f.app.hub.rows("task"),originalTasks);assert.deepEqual(await f.app.hub.rows("daily"),snapshot);
+  const url="/api/hub/kpi-count/result?id="+run.id;
+  assert.equal((await f.req(url,{cookie:ann})).status,403);assert.equal((await f.req("/api/hub/file/"+run.data.inputFileId,{cookie:ann})).status,403);
+  let result=await(await f.req(url+"&memberId=member-1&day=2026-10-27",{cookie:lead})).json();assert.equal(result.production.idCount,34);assert.equal(result.accounting.creditTotal,1960);assert.equal(result.ids[1].baselineCount,30);assert.equal(result.ids[2].baselineCount,10);assert.equal(result.guide.endId,22);assert.equal(result.guide.quantity,1240);assert.equal(result.guide.target,1200);
+  assert.equal((await f.req("/api/hub/kpi-rate",{method:"POST",cookie:lead,body:{memberId:"member-2",date:"2026-10-27",quantity:600}})).status,200);
+  result=await(await f.req(url+"&memberId=member-2&day=2026-10-27",{cookie:lead})).json();assert.equal(result.guide.endId,12);assert.equal(result.guide.quantity,640);assert.equal(result.guide.target,600);
+  const task={code:"",jobId:"995500",title:"Task with initial Datumaro",projectId:project.id,assigneeId:"member-1",reviewerId:"member-2",assignedDate:"2026-10-27",deadline:"2026-10-30",priority:"normal",quantity:999999,frameCount:999};
+  const assign=(session,body)=>f.req("/api/hub/kpi-count/assign",{method:"POST",cookie:session,body});
+  const body={task,runId:run.id,matched:true};
+  assert.equal((await assign(ann,body)).status,403);assert.equal((await assign(lead,{...body,matched:false})).status,400);
+  assert.equal((await assign(lead,{...body,task:{...task,jobId:"WRONG"}})).status,409);
+  assert.equal((await assign(lead,{...body,task:{...task,assigneeId:"unknown"}})).status,400);
+  assert.deepEqual(await f.app.hub.rows("task"),originalTasks);assert.equal((await f.app.hub.get(run.id)).data.assignedTaskId,undefined);
+  const raced=await Promise.all([assign(lead,body),assign(lead,body)]);assert.ok(raced.every(r=>[200,409].includes(r.status)));const response=raced.find(r=>r.status===200);assert.ok(response);const id=(await response.json()).id,created=await f.app.hub.get(id),source=(await f.app.hub.rows("kpi-source")).find(r=>r.task_id===id),assignedRun=await f.app.hub.get(source.data.runId);
+  assert.equal(created.data.quantity,1960);assert.equal(created.data.frameCount,60);assert.equal(source.data.production.ids.length,34);assert.equal(source.owner_id,"member-1");assert.equal(assignedRun.owner_id,"member-1");assert.equal(assignedRun.task_id,id);assert.notEqual(assignedRun.id,run.id);assert.notEqual(assignedRun.data.inputFileId,run.data.inputFileId);
+  const retry=await assign(lead,body);assert.equal(retry.status,200);assert.equal((await retry.json()).id,id);assert.equal((await f.app.hub.rows("task")).length,originalTasks.length+1);
+  assert.equal((await assign(lead,{...body,task:{...task,title:"Changed"}})).status,409);
+  assert.equal((await f.req("/api/hub/kpi-count/result?id="+assignedRun.id,{cookie:ann})).status,200);assert.equal((await f.req("/api/hub/file/"+assignedRun.data.inputFileId,{cookie:ann})).status,200);assert.equal((await f.req("/api/hub/file/"+assignedRun.data.inputFileId,{cookie:other})).status,403);
+  assert.equal((await f.req(url,{cookie:ann})).status,403);
+  const state=await(await f.req("/api/hub/state",{cookie:ann})).json();assert.ok(state.records.some(r=>r.id===source.id));assert.ok(!state.records.some(r=>r.id===run.id));
+  const report=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body:{date:"2026-10-27",submit:true,lines:[{taskId:id,endId:"22",productionMethod:"datumaro-baseline-v1",minutes:480,quantity:9999,rework:0}]}});assert.equal(report.status,200,await report.clone().text());const saved=await f.app.hub.get((await report.json()).id);assert.equal(saved.data.lines[0].quantity,1240);
+  const nextUpload=await preview(lead,"995500",id,true);assert.equal(nextUpload.status,202);const nextRun=await waitBasic(f,(await nextUpload.json()).id);
+  result=await(await f.req("/api/hub/kpi-count/result?id="+nextRun.id+"&memberId=member-1&day=2026-10-28",{cookie:lead})).json();assert.equal(result.guide.previousEnd,22);assert.equal(result.guide.endId,34);assert.equal(result.guide.quantity,720);assert.equal(result.guide.shortfall,480);assert.equal(result.guide.status,"insufficient");
+  result=await(await f.req("/api/hub/kpi-count/result?id="+nextRun.id+"&memberId=member-1&day=2026-11-01",{cookie:lead})).json();assert.equal(result.guide.status,"excluded");
+  assert.equal((await assign(lead,{task:{...task,id},runId:nextRun.id,matched:true})).status,409);assert.equal((await f.app.hub.get(source.id)).data.production.creditTotal,1960);assert.equal((await f.app.hub.get(saved.id)).data.lines[0].quantity,1240);
+  for(const old of snapshot)assert.deepEqual(await f.app.hub.get(old.id),old);
+ }finally{await f.close();}
+});
+test("QC matrix ranges stay grouped, preserve history, protect drafts, and export colored cells with detailed logs",async()=>{
+ let clock=new Date("2026-10-24T01:00:00Z");const f=await fixture({now:()=>clock});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),other=await activate(f,await invite(f,lead,3));
+  const source=(await f.app.hub.rows("daily")).find(r=>r.owner_id==="member-1"&&r.date==="2026-10-21"),taskId=source.data.lines[0].taskId;
+  const post=async(action,body,cookie=qa)=>f.req("/api/hub/"+action,{method:"POST",cookie,body});
+  const a=await post("qc-job-assign",{taskId,reviewerId:"member-2"},lead),assignmentId=(await a.json()).id,run=await finishBasic(f,qa,assignmentId);
+  const snapshot=await f.app.hub.rows("daily");
+  let response=await f.req("/api/hub/qc-basic/matrix?id="+run.id,{cookie:qa});assert.equal(response.status,200);const matrix=await response.json();assert.deepEqual(matrix.frames,[0,1]);assert.equal(matrix.rows.find(r=>r.id==="1").cells.find(c=>c.frame===1).codes,"KZHD");
+  assert.equal((await f.req("/api/hub/qc-basic/matrix?id="+run.id,{cookie:other})).status,403);assert.equal((await f.req("/api/hub/qc-basic/matrix?id="+run.id)).status,401);
+  // Existing saved results have no presence JSON: read their Excel Matrix without rerunning checks.
+  const resultPath=join(f.dir,run.data.resultKey),original=JSON.parse(await readFile(resultPath,"utf8"));delete original.matrix;await writeFile(resultPath,JSON.stringify(original));
+  const legacy=await(await f.req("/api/hub/qc-basic/matrix?id="+run.id,{cookie:qa})).json();assert.deepEqual(legacy.rows.map(r=>[r.id,r.present]),matrix.rows.map(r=>[r.id,r.present]));assert.deepEqual(await f.app.hub.rows("daily"),snapshot);
+  response=await post("qc-job-start",{id:assignmentId});assert.equal(response.status,200,await response.clone().text());const id=(await response.json()).id;
+  let session=await f.app.hub.get(id),checks=Array.from({length:Number(session.data.endId)-Number(session.data.rangeStart)+1},(_,i)=>({objectId:String(i+Number(session.data.rangeStart)),result:i===0?"changes":"passed",frameId:"",type:"Sai vị trí",severity:"minor",description:"",evidence:"",...(i===0?{frameLogs:[{id:"range-001",frameId:"0",frameEnd:"1",code:"K",type:"Sai vị trí",severity:"major",description:"=Không phải công thức: sửa cả 2 frame",evidence:""}]}:{})}));
+  const draft={id,revision:session.revision,matrixRunId:run.id,idChecks:checks};response=await post("qc-draft",draft);assert.equal(response.status,200,await response.clone().text());
+  assert.equal((await post("qc-draft",draft)).status,409);session=await f.app.hub.get(id);assert.equal(session.data.draft.idChecks[0].frameLogs.length,1);
+  const bad=structuredClone(checks);bad[0].frameLogs[0].frameEnd="2000";assert.equal((await post("qc-draft",{...draft,revision:session.revision,idChecks:bad})).status,400);
+  const url="/api/hub/qc-basic/matrix-export?sessionId="+id;
+  assert.equal((await f.req(url,{cookie:ann})).status,403);assert.equal((await f.req(url,{cookie:other})).status,403);
+  const draftExcel=await f.req(url,{cookie:qa});assert.equal(draftExcel.status,200,await draftExcel.clone().text());assert.match(draftExcel.headers.get("Content-Disposition"),/draft/);
+  const inspectXlsx=bytes=>JSON.parse(execFileSync(resolve("self-host/.runtime/qc-python/python.exe"),["-I","-X","utf8","-c","import io,sys,json,openpyxl; w=openpyxl.load_workbook(io.BytesIO(sys.stdin.buffer.read())); m=w['Matrix']; l=w['Log QC']; print(json.dumps({'names':w.sheetnames,'freeze':m.freeze_panes,'d2':m['D2'].value,'e2':m['E2'].value,'fill':m['E2'].fill.fgColor.rgb,'border':m['E2'].border.left.color.rgb,'filter':m.auto_filter.ref,'logs':l.max_row-1,'start':l['B2'].value,'end':l['C2'].value,'type':l['G2'].data_type,'desc':l['G2'].value},ensure_ascii=False))"],{input:bytes,windowsHide:true}).toString());
+  const book=inspectXlsx(Buffer.from(await draftExcel.arrayBuffer()));assert.equal(book.freeze,"D2");assert.equal(book.logs,1);assert.equal(book.start,0);assert.equal(book.end,1);assert.equal(book.type,"s");assert.equal(book.e2,"KZHD");assert.equal(book.fill,"FFF4B084");assert.equal(book.border,"FFC03939");assert.match(book.filter,/A1:E/);
+  response=await post("qc-result",{...draft,revision:session.revision});assert.equal(response.status,200,await response.clone().text());session=await f.app.hub.get(id);const review=await f.app.hub.get(session.data.reviewId);assert.equal(review.data.errors.length,1);assert.equal(review.data.errors[0].frameEnd,"1");assert.equal(review.data.matrixRunId,run.id);
+  assert.equal((await f.req(url,{cookie:ann})).status,200);assert.equal((await f.req(url,{cookie:other})).status,403);
+  assert.equal((await post("review-fix",{id:review.id,errorIndex:0,fixed:true,note:"Đã sửa toàn bộ vùng"},ann)).status,200);
+  const fixed=await f.req(url,{cookie:qa}),fixedBook=inspectXlsx(Buffer.from(await fixed.arrayBuffer()));assert.equal(fixedBook.logs,1);assert.equal(fixedBook.border,"FF3675C5");
+  for(const report of snapshot){const current=await f.app.hub.get(report.id);assert.deepEqual(current.data.lines,report.data.lines);}
+  // A failed recheck the next day creates one linked range, including when that ID is outside the new production range.
+  response=await post("daily",{memberId:"member-1",date:"2026-10-24",submit:true,lines:[{taskId,endId:"36",quantity:120,rework:0,minutes:60}]},lead);assert.equal(response.status,200,await response.clone().text());clock=new Date("2026-10-25T01:00:00Z");
+  response=await post("qc-job-start",{id:assignmentId});assert.equal(response.status,200,await response.clone().text());const nextId=(await response.json()).id,nextSession=await f.app.hub.get(nextId),nextChecks=Array.from({length:Number(nextSession.data.endId)-Number(nextSession.data.rangeStart)+1},(_,i)=>({objectId:String(i+Number(nextSession.data.rangeStart)),result:"passed",type:"Sai vị trí",severity:"minor",description:"",frameId:"",evidence:""}));
+  response=await post("qc-result",{id:nextId,idChecks:nextChecks,matrixRunId:run.id,rechecks:[{reviewId:review.id,errorIndex:0,result:"failed"}]});assert.equal(response.status,200,await response.clone().text());const repeated=await f.app.hub.get((await f.app.hub.get(nextId)).data.reviewId);assert.equal(repeated.data.errors.length,1);assert.equal(repeated.data.errors[0].frameEnd,"1");assert.equal(repeated.data.errors[0].code,"K");assert.equal(repeated.data.errors[0].originReviewId,review.id);
+  const repeatedExcel=await f.req("/api/hub/qc-basic/matrix-export?sessionId="+nextId,{cookie:ann});assert.equal(repeatedExcel.status,200);assert.equal(inspectXlsx(Buffer.from(await repeatedExcel.arrayBuffer())).logs,1);
+ }finally{await f.close();}
+});
+
+test("members receive only weekly KPI summaries and Excel while Lead retains cumulative access",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-26T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC"));
+  const rate=await f.req("/api/hub/kpi-rate",{method:"POST",cookie:lead,body:{memberId:"member-2",date:"2026-10-26",quantity:600}});assert.equal(rate.status,200);
+  for(const [session,memberId,target] of [[ann,"member-1",6000],[qa,"member-2",3000]]){
+   const summary=await(await f.req("/api/hub/kpi-summary",{cookie:session})).json();assert.equal(summary.period,"weekly");assert.equal(summary.start,"2026-10-26");assert.equal(summary.end,"2026-11-01");assert.equal(summary.rows.length,1);assert.equal(summary.rows[0].memberId,memberId);assert.equal(summary.rows[0].kpi.quantity,0);assert.equal(summary.rows[0].kpi.target,target);
+   const state=await(await f.req("/api/hub/state",{cookie:session})).json();assert.equal(state.kpiSummary.period,"weekly");assert.equal(state.kpiSummary.rows.length,1);
+   const boot=await(await f.req("/api/auth/me?bootstrap=1",{cookie:session})).json();assert.equal(boot.hubState.kpiSummary.period,"weekly");
+   assert.equal((await f.req("/api/hub/kpi-summary?period=cumulative&role=Lead",{cookie:session})).status,403);assert.equal((await f.req("/api/hub/kpi-summary?period=weekly&member=team",{cookie:session})).status,403);
+   assert.equal((await f.req("/api/hub/export?kind=daily&format=xlsx&kpiPeriod=cumulative",{cookie:session})).status,403);
+   const excel=await f.req("/api/hub/export?kind=daily&format=xlsx",{cookie:session});assert.equal(excel.status,200);const bytes=Buffer.from(await excel.arrayBuffer()).toString("utf8");assert.ok(bytes.includes('name="KPI tuan"'));assert.ok(!bytes.includes('name="KPI luy ke"'));
+  }
+  const team=await(await f.req("/api/hub/kpi-summary",{cookie:lead})).json();assert.equal(team.period,"cumulative");assert.equal(team.start,"2026-10-20");assert.equal(team.rows.find(r=>r.memberId==="member-1").kpi.quantity,2040);
+  const excel=await f.req("/api/hub/export?kind=daily&format=xlsx",{cookie:lead});assert.ok(Buffer.from(await excel.arrayBuffer()).toString("utf8").includes('name="KPI luy ke"'));
+  assert.equal((await f.req("/api/hub/kpi-summary?period=cumulative&member=member-1",{cookie:qa})).status,403);
+ }finally{await f.close();}
+});
+
+test("Datumaro baseline and updates calculate milestone reports, retain outside work and protect baseline and historical KPI",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-26T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),other=await activate(f,await invite(f,lead,3)),template=(await f.app.hub.rows("task"))[0],taskId="datumaro-http-job";
+  await f.app.store.batch([f.app.hub.insert("task",taskId,{...template.data,assigneeId:"member-1",jobId:"987700",frameCount:60,quantity:null},{project_id:template.project_id})]);
+  const dataset=(ids,frames=50)=>({categories:{label:{labels:[{name:"vehicle"}]}},items:Array.from({length:60},(_,frame)=>({id:`frame_${frame}`,attr:{frame},annotations:frame<frames?ids.map(id=>({type:"cuboid_3d",label_id:0,attributes:{track_id:id-1,keyframe:true}})):[]}))});
+  const upload=async(value)=>{const body=new FormData();body.set("taskId",taskId);body.set("file",new File([JSON.stringify(value)],"datumaro.json"));const response=await f.req("/api/hub/kpi-count/run",{method:"POST",cookie:ann,body});assert.equal(response.status,202,await response.clone().text());const run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);return run;};
+  const confirm=(session,run,sourceRevision)=>f.req("/api/hub/kpi-count/confirm",{method:"POST",cookie:session,body:{id:run.id,matched:true,sourceRevision}});
+  const before=await f.app.hub.rows("daily"),baseline=await upload(dataset(Array.from({length:70},(_,i)=>i+1)));
+  assert.equal((await confirm(ann,baseline,0)).status,403);assert.equal((await confirm(lead,baseline,0)).status,200);
+  let source=(await f.app.hub.rows("kpi-source")).find(r=>r.task_id===taskId);assert.equal(source.data.production.creditTotal,3500);assert.equal(source.data.production.baseline.runId,baseline.id);
+  const update=await upload(dataset([...Array.from({length:50},(_,i)=>i+1),71,72,73,74]));
+  let preview=await(await f.req("/api/hub/kpi-count/result?id="+update.id,{cookie:ann})).json();assert.equal(preview.accounting.currentTotal,2700);assert.equal(preview.accounting.creditTotal,3700);assert.equal(preview.accounting.addedTotal,200);
+  assert.equal((await confirm(other,update,source.revision)).status,403);assert.equal((await confirm(ann,update,0)).status,409);assert.equal((await confirm(ann,update,source.revision)).status,200);
+  assert.deepEqual(await f.app.hub.rows("daily"),before);
+  const body={date:"2026-10-26",submit:true,lines:[{taskId,endId:"24",productionMethod:"datumaro-baseline-v1",minutes:120,quantity:999999,rework:999}]};
+  let response=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body:{...body,lines:[{...body.lines[0],productionMethod:"legacy"}]}});assert.equal(response.status,200,await response.clone().text());let report=await f.app.hub.get((await response.json()).id);assert.equal(report.data.lines[0].productionMethod,"datumaro-baseline-v1");assert.equal(report.data.lines[0].quantity,1200);assert.equal(report.data.lines[0].keyframeSnapshot.baseline,1200);assert.equal(report.data.lines[0].keyframeSnapshot.added,0);assert.equal(report.data.lines[0].productionFactor,undefined);
+  const repeat=await upload(dataset([...Array.from({length:50},(_,i)=>i+1),71,72,73,74]));source=await f.app.hub.get(source.id);assert.equal((await confirm(ann,repeat,source.revision)).status,200);source=await f.app.hub.get(source.id);assert.equal(source.data.production.creditTotal,3700);assert.equal(source.data.production.baseline.runId,baseline.id);
+  assert.equal((await confirm(lead,baseline,source.revision)).status,409);
+  response=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body:{...body,id:report.id,revision:report.revision,lines:[{...body.lines[0],issue:"Ghi chú mới"}]}});assert.equal(response.status,200,await response.clone().text());report=await f.app.hub.get(report.id);assert.equal(report.data.lines[0].quantity,1200);assert.equal(report.data.lines[0].keyframeSnapshot.runId,update.id);
+  const excel=await f.req("/api/hub/kpi-count/export?id="+repeat.id,{cookie:ann});assert.equal(excel.status,200);assert.deepEqual([...new Uint8Array(await excel.arrayBuffer()).slice(0,2)],[80,75]);
+  const empty=await upload(dataset([]));source=await f.app.hub.get(source.id);assert.equal((await confirm(ann,empty,source.revision)).status,200);source=await f.app.hub.get(source.id);assert.equal(source.data.production.creditTotal,3700);assert.equal(source.data.production.currentTotal,0);
+  for(const old of before)assert.deepEqual(await f.app.hub.get(old.id),old);
+ }finally{await f.close();}
+});
+
+test("weekly summary is generated directly from Daily Reports with private member scope and readable Excel",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-24T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),qa=await activate(f,await invite(f,lead,2,"QA/QC"));
+  const response=await f.req("/api/hub/weekly-summary?week=2026-10-24&member=team",{cookie:lead});assert.equal(response.status,200,await response.clone().text());const data=await response.json();assert.equal(data.rows.length,10);assert.equal(data.start,"2026-10-19");assert.equal(data.end,"2026-10-25");assert.equal(data.totals.quantity,16800);assert.equal(data.rows.find(r=>r.memberId==="member-1").quantity,2040);
+  assert.equal((await f.req("/api/hub/weekly-summary?week=2026-10-19&member=team",{cookie:ann})).status,403);assert.equal((await f.req("/api/hub/weekly-summary?week=2026-10-19&member=member-1",{cookie:qa})).status,403);assert.equal((await f.req("/api/hub/export?kind=weekly-summary&format=xlsx&week=2026-10-19&member=team",{cookie:qa})).status,403);
+  const own=await(await f.req("/api/hub/weekly-summary?week=2026-10-19",{cookie:ann})).json();assert.equal(own.rows.length,1);assert.equal(own.rows[0].memberId,"member-1");assert.ok(own.work.every(r=>r.memberId==="member-1"));
+  const excel=await f.req("/api/hub/export?kind=weekly-summary&format=xlsx&week=2026-10-19&member=team",{cookie:lead});assert.equal(excel.status,200);assert.match(excel.headers.get("Content-Disposition"),/2026-10-19_2026-10-25/);assert.deepEqual([...new Uint8Array(await excel.arrayBuffer()).slice(0,2)],[80,75]);
+ }finally{await f.close();}
+});
+
+test("keyframe file counting includes outside, protects files, reconciles daily ID ranges and never recalculates saved KPI",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-24T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),other=await activate(f,await invite(f,lead,3)),qa=await activate(f,await invite(f,lead,2,"QA/QC")),template=(await f.app.hub.rows("task"))[0],taskId="keyframe-http-job";
+  await f.app.store.batch([f.app.hub.insert("task",taskId,{...template.data,assigneeId:"member-1",reviewerId:"member-2",jobId:"987600",frameCount:3,quantity:null},{project_id:template.project_id})]);
+  const native={tags:[],shapes:[],tracks:Array.from({length:3},(_,i)=>({id:8000+i,label:"vehicle",shapes:[{type:"cuboid",frame:0,outside:false},{type:"cuboid",frame:1,outside:true},...(i===0?[{type:"cuboid",frame:2,outside:false,keyframe:false}]:[])]}))};
+  const upload=async(session,value=native,index="")=>{const body=new FormData();body.set("taskId",taskId);body.set("trackOffset","1");body.set("jobIndex",index);body.set("file",new File([JSON.stringify(value)],"annotations.json"));return f.req("/api/hub/kpi-count/run",{method:"POST",cookie:session,body});};
+  assert.equal((await upload(other)).status,403);assert.equal((await f.req("/api/hub/kpi-count/result?id=unknown")).status,401);
+  const oldReports=await f.app.hub.rows("daily"),response=await upload(ann,[native]);assert.equal(response.status,202,await response.clone().text());const run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);assert.equal(run.data.summary.totals.keyframes,6);assert.equal(run.data.summary.totals.outside,3);assert.equal(run.data.summary.totals.interpolated,1);assert.equal(run.data.summary.usable,true);
+  assert.deepEqual(await f.app.hub.rows("daily"),oldReports);
+  const result=await f.req("/api/hub/kpi-count/result?id="+run.id,{cookie:qa});assert.equal(result.status,200);assert.deepEqual((await result.json()).ids.map(r=>[r.id,r.keyframes,r.outside]),[[1,2,1],[2,2,1],[3,2,1]]);
+  assert.equal((await f.req("/api/hub/kpi-count/result?id="+run.id,{cookie:other})).status,403);assert.equal((await f.req("/api/hub/file/"+run.data.inputFileId,{cookie:other})).status,403);assert.equal((await f.req("/api/hub/kpi-count/export?id="+run.id,{cookie:other})).status,403);
+  assert.equal((await f.req("/api/hub/kpi-count/confirm",{method:"POST",cookie:ann,body:{id:run.id,matched:false}})).status,400);
+  assert.equal((await f.req("/api/hub/kpi-count/confirm",{method:"POST",cookie:ann,body:{id:run.id,matched:true}})).status,200);
+  const source=(await f.app.hub.rows("kpi-source"))[0];assert.ok(source.data.fileHash);assert.ok((await f.app.hub.visible((await f.app.hub.members()).find(m=>m.id==="member-1"))).some(r=>r.id===source.id));assert.ok(!(await f.app.hub.visible((await f.app.hub.members()).find(m=>m.id==="member-3"))).some(r=>r.id===source.id));
+  let daily=await f.req("/api/hub/daily",{method:"POST",cookie:lead,body:{memberId:"member-1",date:"2026-10-23",submit:true,lines:[{taskId,endId:"1",quantity:111,minutes:120,rework:0}]}});assert.equal(daily.status,200,await daily.clone().text());
+  const body={date:"2026-10-24",submit:true,lines:[{taskId,endId:"3",quantity:99999,rework:99,minutes:120,productionMethod:"keyframe-v1",countSourceId:source.id}]};daily=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body});assert.equal(daily.status,200,await daily.clone().text());const saved=await f.app.hub.get((await daily.json()).id);assert.equal(saved.data.lines[0].quantity,4);assert.equal(saved.data.lines[0].keyframeSnapshot.start,2);assert.equal(saved.data.lines[0].keyframeSnapshot.outside,2);
+  const excel=await f.req("/api/hub/kpi-count/export?id="+run.id,{cookie:ann});assert.equal(excel.status,200);const buffer=Buffer.from(await excel.arrayBuffer());assert.deepEqual([...buffer.subarray(0,2)],[80,75]);
+  const sheets=JSON.parse(execFileSync(resolve("self-host/.runtime/qc-python/python.exe"),["-I","-c","import io,sys,json,openpyxl; w=openpyxl.load_workbook(io.BytesIO(sys.stdin.buffer.read())); print(json.dumps({'names':w.sheetnames,'headers':[c.value for c in w.worksheets[0][1]],'qty':w.worksheets[1]['I2'].value}))"],{input:buffer,windowsHide:true}).toString());assert.equal(sheets.names.length,3);assert.ok(sheets.headers.includes("Keyframe outside"));assert.equal(sheets.qty,4);
+  const updated=structuredClone(native);updated.tracks[2].shapes.push({type:"cuboid",frame:2,outside:true});const more=await upload(ann,[updated]);assert.equal(more.status,202);const next=await waitBasic(f,(await more.json()).id);assert.equal(next.status,"ready",next.data.error);assert.equal((await f.req("/api/hub/kpi-count/confirm",{method:"POST",cookie:qa,body:{id:next.id,matched:true}})).status,200);
+  daily=await f.req("/api/hub/daily",{method:"POST",cookie:ann,body:{...body,id:saved.id,revision:saved.revision,lines:[{...body.lines[0],quantity:99999,issue:"Note edit"}]}});assert.equal(daily.status,200,await daily.clone().text());const unchanged=await f.app.hub.get(saved.id);assert.equal(unchanged.data.lines[0].quantity,4);assert.equal(unchanged.data.lines[0].keyframeSnapshot.fileHash,run.data.fileHash);
+  const compared=await(await f.req("/api/hub/kpi-count/result?id="+next.id,{cookie:ann})).json();assert.equal(compared.comparisons[0].quantity,5);assert.equal(compared.comparisons[0].savedQuantity,4);assert.equal(compared.comparisons[0].difference,1);
+  assert.deepEqual((await f.app.hub.rows("daily")).filter(r=>oldReports.some(o=>o.id===r.id)),oldReports);
+  const snapshot=await(await f.req("/api/hub/backup",{cookie:lead})).json();const restored=await f.req("/api/hub/restore",{method:"POST",cookie:lead,body:{confirm:"KHOI PHUC",snapshot}});assert.equal(restored.status,200,await restored.clone().text());assert.equal((await f.app.hub.get(source.id)).data.runId,next.id);
+ }finally{await f.close();}
+});
+
+test("Datumaro with missing Object IDs cannot activate a baseline, and multi-Job backup requires explicit selection",async()=>{
+ const f=await fixture();try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),task=(await f.app.hub.rows("task")).find(r=>r.data.assigneeId==="member-1");
+  const upload=async(content,index="")=>{const form=new FormData();form.set("taskId",task.id);form.set("file",new File([JSON.stringify(content)],"annotations.json"));form.set("jobIndex",index);return f.req("/api/hub/kpi-count/run",{method:"POST",cookie:ann,body:form});};
+  const data=basicDataset();for(const item of data.items)for(const ann of item.annotations)ann.attributes.keyframe=true;
+  let response=await upload(data),run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);assert.equal(run.data.summary.completeOutside,false);assert.equal(run.data.summary.usable,false);assert.equal(run.data.summary.totals.outside,1);assert.equal((await f.req("/api/hub/kpi-count/confirm",{method:"POST",cookie:lead,body:{id:run.id,matched:true,sourceRevision:0}})).status,409);assert.equal((await f.app.hub.rows("kpi-source")).length,0);
+  const native={tags:[],shapes:[],tracks:[{label:"vehicle",shapes:[{type:"cuboid",frame:0,outside:true}]}]};
+  response=await upload([native,native]);run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"failed");assert.match(run.data.error,/2 Job/);
+  response=await upload([native,native],"2");run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);assert.equal(run.data.summary.jobIndex,2);assert.equal(run.data.summary.totals.keyframes,1);assert.equal(run.data.summary.usable,true);
+ }finally{await f.close();}
+});
 
 test("local-only Lead setup, password hashing, login, session rotation and logout",async()=>{
  const f=await fixture();try{

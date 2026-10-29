@@ -1,4 +1,5 @@
 import type { Row } from "./domain";
+import {reportedQc} from "./reported-qc.ts";
 
 export const DAILY_CUBOID_TARGET = 1200;
 export const KPI_START_DATE="2026-10-20",WORKING_SATURDAY="2026-10-24";
@@ -23,14 +24,24 @@ export function kpiDayTarget(day:string,memberId:string|null|undefined,records:R
 export function dailyKpi(report: Pick<Row,"data"> & Partial<Pick<Row,"date"|"owner_id">>, records: Row[]) {
   const lines=(report.data.lines||[]).filter((l:any)=>l.activity!=="qc");
   const cuboid=lines.filter((l:any)=>{const task=records.find(t=>t.kind==="task"&&t.id===l.taskId);return records.some(p=>p.kind==="project"&&p.id===task?.project_id&&p.data.unit==="cuboid");});
-  const quantity=cuboid.reduce((n:number,l:any)=>n+(Number(l.quantity)||0),0),applicable=cuboid.length>0&&!report.data.scoped,day=report.date||report.data.date;
-  const target=day?kpiDayTarget(day,report.owner_id,records):DAILY_CUBOID_TARGET;
-  return {quantity,target,remaining:applicable?Math.max(0,target-quantity):null,ratio:applicable&&target?quantity/target:null,result:!applicable?(report.data.scoped?"Chỉ xem một phần":"Không áp dụng"):target===0?"Không tính KPI":quantity>=target?"Đạt":"Chưa đạt",applicable};
+  const qcCredit=reportedQc(report)?.kpiCuboids||0;
+  const quantity=cuboid.reduce((n:number,l:any)=>n+(Number(l.quantity)||0),0)+qcCredit,applicable=(cuboid.length>0||qcCredit>0)&&!report.data.scoped,day=report.date||report.data.date;
+  const target=day?kpiDayTarget(day,report.owner_id,records):DAILY_CUBOID_TARGET,pending=cuboid.some((l:any)=>l.productionPending);
+  return {quantity,target,remaining:applicable&&!pending?Math.max(0,target-quantity):null,ratio:applicable&&target&&!pending?quantity/target:null,result:pending?"Chờ bảng đếm":!applicable?(report.data.scoped?"Chỉ xem một phần":"Không áp dụng"):target===0?"Không tính KPI":quantity>=target?"Đạt":"Chưa đạt",applicable,pending};
 }
 export function cumulativeKpi(memberId:string,records:Row[],end=vietnamToday()) {
  const config=records.find(r=>r.id==="settings")?.data||{},start=config.kpiStartDate||KPI_START_DATE;
  let target=0,days=0;for(let d=start;d<=end;d=add(d,1)){const value=kpiDayTarget(d,memberId,records,config);target+=value;if(value)days++;}
  const reports=records.filter(r=>r.kind==="daily"&&r.owner_id===memberId&&r.date!>=start&&r.date!<=end&&["submitted","approved","imported"].includes(r.status)&&!r.data.scoped);
- const quantity=reports.reduce((n,r)=>n+dailyKpi(r,records).quantity,0);
- return {start,end,target,days,quantity,currentRate:dailyRate(memberId,end,records),remaining:Math.max(0,target-quantity),ratio:target?quantity/target:null,result:!target?"Không tính KPI":quantity>=target?"Đạt":"Chưa đạt"};
+ const quantity=reports.reduce((n,r)=>n+dailyKpi(r,records).quantity,0),pendingReports=reports.filter(r=>dailyKpi(r,records).pending).length;
+ return {start,end,target,days,quantity,pendingReports,currentRate:dailyRate(memberId,end,records),remaining:Math.max(0,target-quantity),ratio:target&&!pendingReports?quantity/target:null,result:pendingReports?"Chờ bảng đếm":!target?"Không tính KPI":quantity>=target?"Đạt":"Chưa đạt"};
 }
+export function weeklyKpi(memberId:string,records:Row[],asOf=vietnamToday()) {
+ const day=new Date(asOf+"T12:00:00Z"),start=add(asOf,-((day.getUTCDay()+6)%7)),end=add(start,6);
+ let target=0,days=0,targetToDate=0;
+ for(let d=start;d<=end;d=add(d,1)){const value=kpiDayTarget(d,memberId,records);target+=value;if(value)days++;if(d<=asOf)targetToDate+=value;}
+ const reports=records.filter(r=>r.kind==="daily"&&r.owner_id===memberId&&r.date!>=start&&r.date!<=asOf&&["submitted","approved","imported"].includes(r.status)&&!r.data.scoped);
+ const quantity=reports.reduce((n,r)=>n+dailyKpi(r,records).quantity,0),pendingReports=reports.filter(r=>dailyKpi(r,records).pending).length;
+ return {start,end,asOf,target,targetToDate,days,quantity,pendingReports,currentRate:dailyRate(memberId,asOf,records),remaining:Math.max(0,target-quantity),ratio:target&&!pendingReports?quantity/target:null,result:pendingReports?"Chờ bảng đếm":!target?"Không tính KPI":quantity>=target?"Đạt":"Chưa đạt"};
+}
+export type KpiSummary={period:"weekly"|"cumulative";start:string;end:string;asOf:string;rows:{memberId:string;kpi:ReturnType<typeof cumulativeKpi>|ReturnType<typeof weeklyKpi>}[]};

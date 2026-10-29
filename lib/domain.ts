@@ -1,6 +1,6 @@
 import { z } from "zod";
 import initialImport from "../data/initial-import.json" with { type: "json" };
-import { scheduledWorkday } from "./kpi.ts";
+import { scheduledWorkday,cumulativeKpi,weeklyKpi,type KpiSummary } from "./kpi.ts";
 import { buildTeamEvaluation,evaluationTotals } from "./evaluation.ts";
 import {ensureQcAssignments,qcJobAction} from "./qc-job-workflow.ts";
 import { dailyQcAction } from "./qc-workflow.ts";
@@ -9,6 +9,11 @@ import {dailyReportWritable,DAILY_REPORT_DEADLINE} from "./daily-reports.ts";
 import {reportEndId} from "./report-progress.ts";
 import {taskFrameCount} from "./task-frames.ts";
 import {cuboidsFromIds,PRODUCTION_FACTOR} from "./report-production.ts";
+import {keyframeQuantity,keyframeRange} from "./keyframe-kpi.ts";
+import {countedMethod,DATUMARO_METHOD} from "./datumaro-kpi.ts";
+import {buildWeeklySummary} from "./weekly-summary.ts";
+import {qaAction} from "./qa-workflow.ts";
+import {importOfflineQc} from "./qc-offline-workflow.ts";
 
 export type Identity = { userId: string; email: string };
 export type Member = { id: string; name: string; email: string; auth_id: string | null; role: string; state: string; invite_expires: string | null; created_at: string };
@@ -35,7 +40,7 @@ const url = z.string().trim().max(2000).refine(v => !v || /^https?:\/\//i.test(v
 const id = z.string().min(1).max(100);
 const projectSchema = z.object({ name: required, description: str.default(""), instructions: str.default(""), unit: z.enum(["frame", "cuboid", "scene"]), target: num.nullable().default(null), status: z.enum(["active", "archived"]).default("active") });
 const taskSchema = z.object({ code: z.string().trim().max(500).default(""), jobId: z.string().trim().regex(/^\d*$/, "Job ID chỉ gồm chữ số").max(30).default(""), title: required, frameCount: num.int().positive().nullable().optional(), projectId: id, assigneeId: id, reviewerId: id, link: url.default(""), assignedDate: date, deadline: date, priority: z.enum(["low", "normal", "high", "urgent"]), quantity: num.positive(), note: str.default("") }).refine(v=>v.code||v.jobId,{message:"Nhập Task ID / mã batch hoặc Job ID",path:["code"]});
-const lineSchema = z.object({ taskId: id, taskCode:z.string().default(""),jobId:z.string().default(""),endId:z.string().trim().regex(/^\d*$/,"ID đã làm tới chỉ gồm chữ số").max(30).default(""),activity: z.enum(["annotation", "qc"]).default("annotation"), idCount:num.int().nullable().optional(), minutes: num.positive().max(1440), quantity: num, rework: num, work: str.default(""), issue: str.default(""), evidence: url.default("") });
+const lineSchema = z.object({ taskId: id, taskCode:z.string().default(""),jobId:z.string().default(""),endId:z.string().trim().regex(/^\d*$/,"ID đã làm tới chỉ gồm chữ số").max(30).default(""),activity: z.enum(["annotation", "qc"]).default("annotation"), productionMethod:z.enum(["datumaro-baseline-v1","keyframe-v1","legacy"]).optional(), countSourceId:id.optional(), countRunId:id.optional(), idCount:num.int().nullable().optional(), minutes: num.positive().max(1440), quantity: num, rework: num, work: str.default(""), issue: str.default(""), evidence: url.default("") });
 const reportSchema = z.object({ date, memberId:id.optional(), lines: z.array(lineSchema).min(1).max(50), completed: str.default(""), blockers: str.default(""), support: str.default(""), nextPlan: str.default(""), submit: z.boolean().default(false) });
 const weeklySchema = z.object({ date, highlights: str.default(""), difficulties: str.default(""), improvements: str.default(""), nextPlan: str.default(""), submit: z.boolean().default(false) });
 const reviewSchema = z.object({ taskId: id, productionDate: date.optional(), checked: num.positive(), passed: num, failed: num, scope: z.enum(["full", "sample"]), sample: str.default(""), verdict: z.enum(["passed", "changes"]), note: str.default(""), errors: z.array(z.object({ type: required, severity: z.enum(["minor", "major", "critical"]), description: required, evidence: url.default("") })).max(100) });
@@ -93,16 +98,17 @@ export class Hub {
     const projectIds = new Set(tasks.map(t => t.project_id));
     const reportIds = new Set(all.filter(r => ["daily", "weekly"].includes(r.kind) && (m.role === "Lead" || r.owner_id === m.id)).map(r => r.id));
     return all.flatMap(r => {
+      if(r.kind==="qc-session"&&r.data.offlineResult){const {offlineResult,...data}=r.data;r={...r,data};}
       if (m.role === "Lead") return [r];
       if (r.kind === "task") return taskIds.has(r.id) ? [r] : [];
       if (r.kind === "project") return projectIds.has(r.id) ? [r] : [];
-      if (["settings", "document"].includes(r.kind)) return [r];
+      if (["settings", "document", "qa-question", "qa-answer"].includes(r.kind)) return [r];
       if(["kpi-exclusion","kpi-rate"].includes(r.kind))return !r.owner_id||r.owner_id===m.id?[r]:[];
       if (["attendance", "request", "weekly", "notification"].includes(r.kind)) return r.owner_id === m.id ? [r] : [];
-      if(r.kind==="manual-rework")return r.owner_id===m.id?[r]:[];
+      if(["manual-rework","weekly-snapshot"].includes(r.kind))return r.owner_id===m.id?[r]:[];
       if (r.kind === "target") return r.owner_id === m.id ? [r] : [];
       if(["qc-session","qc-assignment"].includes(r.kind))return r.data.assigneeId===m.id||(m.role==="QA/QC"&&r.data.reviewerId===m.id)?[r]:[];
-      if(r.kind==="qc-basic")return r.owner_id===m.id||m.role==="QA/QC"&&taskIds.has(r.task_id||"")?[r]:[];
+      if(["qc-basic","kpi-count","kpi-source"].includes(r.kind))return r.owner_id===m.id||m.role==="QA/QC"&&taskIds.has(r.task_id||"")?[r]:[];
       if (["review", "comment"].includes(r.kind)) return taskIds.has(r.task_id || "") ? [r] : [];
       if (r.kind === "daily") {
         if (r.owner_id === m.id) return [r];
@@ -120,8 +126,19 @@ export class Hub {
     await this.ensureAttendanceDefaults();
     await ensureQcAssignments(this);
     const rows = await this.visible(me);
-    const directory = me.role === "Lead" ? members : members.filter(m => m.id === me.id || rows.some(r => r.kind === "task" && [r.data.assigneeId, r.data.reviewerId].includes(m.id))).map(m => ({ id: m.id, name: m.name, role: m.role, state: m.state }));
-    return { me, members: directory, teamSize: members.length, records: rows, serverDate: today(this.now), serverTime: this.stamp(), audit: me.role === "Lead" ? (await this.db.prepare("SELECT * FROM audit ORDER BY created_at DESC LIMIT 300").all()).results : [] };
+    const directory = me.role === "Lead" ? members : members.filter(m => m.id === me.id || rows.some(r => r.kind === "task" && [r.data.assigneeId, r.data.reviewerId].includes(m.id)||["qa-question","qa-answer"].includes(r.kind)&&r.owner_id===m.id)).map(m => ({ id: m.id, name: m.name, role: m.role, state: m.state }));
+    return { me, members: directory, teamSize: members.length, records: rows, kpiSummary:await this.kpiSummary(me,undefined,undefined,rows),serverDate: today(this.now), serverTime: this.stamp(), audit: me.role === "Lead" ? (await this.db.prepare("SELECT * FROM audit ORDER BY created_at DESC LIMIT 300").all()).results : [] };
+  }
+  async kpiSummary(m:Member,requested?:string,owner?:string,visible?:Row[]):Promise<KpiSummary>{
+    const period=requested||(m.role==="Lead"?"cumulative":"weekly"),memberId=owner||(m.role==="Lead"?"team":m.id);
+    ensure(["weekly","cumulative"].includes(period),"Kỳ KPI không hợp lệ");
+    ensure(period!=="cumulative"||m.role==="Lead","Chỉ Lead được xem KPI lũy kế",403);
+    ensure(m.role==="Lead"||memberId===m.id,"Chỉ được xem KPI của bản thân",403);
+    const members=await this.members(),all=visible||await this.visible(m),asOf=today(this.now);
+    ensure(memberId==="team"||members.some(member=>member.id===memberId),"Không tìm thấy nhân sự",404);
+    const selected=members.filter(member=>member.state==="active"&&(memberId==="team"||member.id===memberId)&&(member.role!=="Lead"||all.some(r=>r.kind==="daily"&&r.owner_id===member.id)));
+    const calculate=(id:string)=>period==="weekly"?weeklyKpi(id,all,asOf):cumulativeKpi(id,all,asOf),range=calculate(m.id);
+    return {period:period as KpiSummary["period"],start:range.start,end:range.end,asOf,rows:selected.map(member=>({memberId:member.id,kpi:calculate(member.id)}))};
   }
   async settings() {
     const row=await this.get("settings","settings");
@@ -145,8 +162,43 @@ export class Hub {
     else if(policy.data.lastDate<day)statements.push(this.db.prepare("UPDATE records SET data=json_set(data,'$.lastDate',?),revision=revision+1,updated_at=? WHERE id='attendance-default-policy' AND json_extract(data,'$.lastDate')<?").bind(day,this.stamp(),day));
     if(statements.length){const results=await this.db.batch(statements);const changes=results.slice(0,defaultCount).reduce((n,r)=>n+(r.meta?.changes||0),0);if(changes)await this.db.batch([this.audit("system:defaults","Điểm danh và tác phong mặc định",day,null,{from:start,to:day,changes})]);}
   }
+  async planTask(m:Member,b:any){
+      this.lead(m); const data = taskSchema.parse(b);
+      if(data.jobId&&data.code) { ensure(/^\d+$/.test(data.code),"Task ID CVAT phải gồm chữ số khi có Job ID"); data.link=`https://cvat-test.vantixapps.net/tasks/${data.code}/jobs/${data.jobId}`; }
+      else if(data.jobId&&/^https:\/\/cvat-test\.vantixapps\.net\/tasks\//i.test(data.link))data.link="";
+      ensure(data.deadline >= data.assignedDate, "Deadline phải sau ngày giao");
+      const project = await this.get(data.projectId, "project"); ensure(project.status === "active", "Dự án đã được lưu trữ");
+      const members = await this.members();
+      ensure(members.some(x => x.id === data.assigneeId && x.state !== "disabled"), "Người thực hiện phải có trong danh sách và không bị vô hiệu hóa");
+      ensure(members.some(x => x.id === data.reviewerId && x.state !== "disabled" && ["Lead", "QA/QC"].includes(x.role)), "Người kiểm tra phải là Lead hoặc QA/QC không bị vô hiệu hóa");
+      const tasks = await this.rows("task"); ensure(!tasks.some(t => t.data.code === data.code && (t.data.jobId||"") === data.jobId && t.id !== b.id), "Cặp Task ID / Job ID đã tồn tại");
+      const old = b.id ? await this.get(b.id, "task") : null;
+      ensure(!old || old.project_id === data.projectId, "Không thể chuyển task sang dự án khác");
+      ensure(!old || old.status !== "done", "Task hoàn thành đã được khóa");
+      ensure(!old || data.quantity >= old.data.completed, "Khối lượng giao không được thấp hơn tiến độ đã làm");
+      if (old) { const reported = (await this.rows("daily")).flatMap(r=>r.data.lines).filter((l:any)=>l.taskId===old.id).reduce((n:number,l:any)=>n+l.quantity,0); ensure(data.quantity>=reported,"Khối lượng giao không được thấp hơn sản lượng đã ghi nhận"); }
+      const recordId=old?.id||crypto.randomUUID(),taskData={...old?.data,...data,completed:old?.data.completed||0},meta={project_id:data.projectId,natural_key:data.code+":"+data.jobId,status:old?.status||"todo"};
+      return {id:recordId,data:taskData,projectId:data.projectId,old,statements:[old?this.replace(old,taskData,meta.status,meta.natural_key):this.insert("task",recordId,taskData,meta),this.notify(data.assigneeId,"Task được phân công",data.code+" · "+data.title,"tasks"),this.notify(data.reviewerId,"Phân công kiểm tra",data.code,"qa"),this.audit(m.id,"Giao / cập nhật task",recordId,old,{...meta,data:taskData})]};
+  }
   async mutate(m: Member, action: string, input: any): Promise<{ok: boolean; id?: string}> {
     const b = input || {};
+    if(action==="qc-offline-migrate"){
+      this.lead(m);const data=z.object({id:z.string(),revision:z.number().int().positive()}).parse(b),assignment=await this.get(data.id,"qc-assignment");
+      ensure(assignment.revision===data.revision,"Phân công đã thay đổi; làm mới trước khi chuyển",409);
+      const active=(await this.rows("qc-session")).filter(r=>r.task_id===assignment.task_id&&r.status==="in_progress");
+      return this.commit(m,"Chuyển phiên QC web sang app offline",assignment,"qc-assignment",{...assignment.data,migratedOfflineAt:this.stamp()},{},active.map(r=>this.replace(r,{...r.data,archivedForOfflineAt:this.stamp(),archivedBy:m.id},"superseded")));
+    }
+    if(action==="qc-offline-import")return importOfflineQc(this,m,b);
+    if(action.startsWith("qa-")){const result=await qaAction(this,m,action,b);if(result)return result;}
+    if(action==="weekly-snapshot"){
+      this.lead(m);const totals=z.object({quantity:num,target:num,daysMet:num.int().max(7),kpiDays:num.int().max(7),qcRounds:num.int(),reworkCount:num.int(),offEquivalent:num.max(7),lateDays:num.int().max(7),conductBad:num.int().max(7),quality:z.number().min(0).max(1).nullable(),qualityBasis:z.string().max(500),qualityPassed:num.int().nullable()});
+      const data=z.object({memberId:id,week:date,asOf:date,role:z.enum(["Lead","QA/QC","Annotator"]),totals}).parse(b),start=weekStart(data.week),end=addDays(start,6);
+      ensure(end<today(this.now),"Chỉ lưu tổng đã chốt cho tuần đã kết thúc");ensure(data.asOf>=start&&data.asOf<=end,"Ngày chốt phải thuộc tuần");ensure(data.totals.daysMet<=data.totals.kpiDays,"Số ngày đạt không vượt số ngày tính KPI");ensure((await this.members()).some(v=>v.id===data.memberId),"Không tìm thấy nhân sự");
+      const old=(await this.rows("weekly-snapshot")).find(r=>r.owner_id===data.memberId&&r.date===start),value={weekEnd:end,asOf:data.asOf,role:data.role,totals:data.totals,dailyUnallocated:true};
+      if(b.revision!==undefined)ensure(b.revision===(old?.revision||0),"Tổng báo cáo tuần đã đổi; làm mới trước khi lưu.",409);
+      if(old&&JSON.stringify(old.data)===JSON.stringify(value))return{ok:true,id:old.id};
+      return this.commit(m,"Lưu tổng báo cáo tuần đã chốt",old||null,"weekly-snapshot",value,{owner_id:data.memberId,date:start,natural_key:start+":"+data.memberId,status:"approved"});
+    }
     if(["qc-job-assign","qc-job-start"].includes(action))return(await qcJobAction(this,m,action,b))!;
     if(["qc-assign","qc-start","qc-result","qc-draft"].includes(action))return (await dailyQcAction(this,m,action,b))!;
     if(action==="manual-rework"){
@@ -176,23 +228,7 @@ export class Hub {
       if (old && old.data.unit !== data.unit) ensure(!(await this.rows("task")).some(t => t.project_id === old.id), "Không thể đổi đơn vị sau khi dự án đã có task");
       return this.commit(m, "Lưu dự án", old, "project", data, { status: data.status });
     }
-    if (action === "task") {
-      this.lead(m); const data = taskSchema.parse(b);
-      if(data.jobId&&data.code) { ensure(/^\d+$/.test(data.code),"Task ID CVAT phải gồm chữ số khi có Job ID"); data.link=`https://cvat-test.vantixapps.net/tasks/${data.code}/jobs/${data.jobId}`; }
-      else if(data.jobId&&/^https:\/\/cvat-test\.vantixapps\.net\/tasks\//i.test(data.link))data.link="";
-      ensure(data.deadline >= data.assignedDate, "Deadline phải sau ngày giao");
-      const project = await this.get(data.projectId, "project"); ensure(project.status === "active", "Dự án đã được lưu trữ");
-      const members = await this.members();
-      ensure(members.some(x => x.id === data.assigneeId && x.state !== "disabled"), "Người thực hiện phải có trong danh sách và không bị vô hiệu hóa");
-      ensure(members.some(x => x.id === data.reviewerId && x.state !== "disabled" && ["Lead", "QA/QC"].includes(x.role)), "Người kiểm tra phải là Lead hoặc QA/QC không bị vô hiệu hóa");
-      const tasks = await this.rows("task"); ensure(!tasks.some(t => t.data.code === data.code && (t.data.jobId||"") === data.jobId && t.id !== b.id), "Cặp Task ID / Job ID đã tồn tại");
-      const old = b.id ? await this.get(b.id, "task") : null;
-      ensure(!old || old.project_id === data.projectId, "Không thể chuyển task sang dự án khác");
-      ensure(!old || old.status !== "done", "Task hoàn thành đã được khóa");
-      ensure(!old || data.quantity >= old.data.completed, "Khối lượng giao không được thấp hơn tiến độ đã làm");
-      if (old) { const reported = (await this.rows("daily")).flatMap(r=>r.data.lines).filter((l:any)=>l.taskId===old.id).reduce((n:number,l:any)=>n+l.quantity,0); ensure(data.quantity>=reported,"Khối lượng giao không được thấp hơn sản lượng đã ghi nhận"); }
-      return this.commit(m, "Giao / cập nhật task", old, "task", { ...old?.data, ...data, completed: old?.data.completed || 0 }, { project_id: data.projectId, natural_key:data.code+":"+data.jobId,status: old?.status || "todo" }, [this.notify(data.assigneeId, "Task được phân công", data.code + " · " + data.title, "tasks"), this.notify(data.reviewerId, "Phân công kiểm tra", data.code, "qa")]);
-    }
+    if (action === "task") {const plan=await this.planTask(m,b);await this.db.batch(plan.statements);return {ok:true,id:plan.id};}
     if (action === "progress") {
       const row = await this.get(id.parse(b.id), "task"); ensure(m.role === "Lead" || row.data.assigneeId === m.id, "Không được sửa task của người khác", 403);
       ensure(row.status !== "done", "Task hoàn thành đã được khóa"); ensure(row.data.quantity && row.data.deadline, "Lead cần bổ sung khối lượng giao và deadline của task nhập từ sheet");
@@ -262,7 +298,34 @@ export class Hub {
         l.taskCode=task.data.code;l.jobId=task.data.jobId||"";
         if (l.activity === "qc") { ensure((owner.role === "Lead" || (owner.role === "QA/QC" && task.data.reviewerId === owner.id)), "Chỉ báo cáo QC cho task được giao kiểm tra", 403); ensure(l.quantity === 0 && l.rework === 0, "Hoạt động QC chỉ ghi thời gian; sản lượng lấy từ kết quả kiểm tra"); continue; }
         ensure(task.data.assigneeId === owner.id, "Chỉ được báo cáo annotation cho task của nhân sự báo cáo", 403);
-        if(l.idCount!=null){
+        const previous=old?.data.lines?.find((line:any)=>line.taskId===l.taskId&&line.activity!=="qc");
+        if(!previous||previous.productionPending){const source=all.find(r=>r.kind==="kpi-source"&&r.task_id===task.id&&r.owner_id===owner.id&&r.status==="active");if(source&&(countedMethod(l.productionMethod)||data.date>=source.data.capturedDate))l.productionMethod=source.data.production.basis===DATUMARO_METHOD?DATUMARO_METHOD:"keyframe-v1";}
+        if(l.endId&&(!previous||BigInt(l.endId)>BigInt(reportEndId(previous)||"0")))ensure(!all.some(r=>r.kind==="daily"&&r.id!==old?.id&&r.owner_id===owner.id&&r.date!>data.date&&["submitted","approved","imported"].includes(r.status)&&(r.data.lines||[]).some((line:any)=>line.taskId===task.id&&line.keyframeSnapshot&&BigInt(l.endId)>=BigInt(line.keyframeSnapshot.start))),"Mốc ID chồng lên KPI keyframe đã lưu ở ngày sau. Cần đối chiếu lại khoảng ID.",409);
+        if(countedMethod(l.productionMethod)){
+          ensure(all.some(p=>p.kind==="project"&&p.id===task.project_id&&p.data.unit==="cuboid"),"KPI keyframe chỉ áp dụng cho cuboid");
+          const stable=previous?.productionMethod===l.productionMethod&&previous.keyframeSnapshot&&reportEndId(previous)===l.endId&&(!l.countSourceId||l.countSourceId===previous.countSourceId);
+          if(stable){Object.assign(l,{quantity:previous.quantity,idCount:previous.idCount,countSourceId:previous.countSourceId,countRunId:previous.countRunId||previous.keyframeSnapshot.runId||undefined,keyframeSnapshot:previous.keyframeSnapshot,frameCountAtReport:previous.frameCountAtReport});}
+          else{
+            ensure(!previous||previous.productionPending&&!previous.keyframeSnapshot||previous.productionMethod===l.productionMethod,"Giữ nguyên KPI cũ. Chỉ dùng cách đếm mới cho dòng báo cáo mới.",409);
+            const source=all.find(r=>r.kind==="kpi-source"&&r.task_id===task.id&&r.owner_id===owner.id&&r.status==="active");
+            if(source&&l.countRunId)ensure(l.countRunId===source.data.runId,"Bảng đếm đã được cập nhật bằng file khác. Làm mới dữ liệu trước khi gửi báo cáo.",409);
+            const range=keyframeRange(all,owner.id,task.id,data.date,l.endId,old?.id,source?.data.production.offset);
+            ensure(!range.error,range.error);
+            const baseline=l.productionMethod===DATUMARO_METHOD;
+            const compatible=source&&(baseline?source.data.production.basis===DATUMARO_METHOD:!source.data.production.basis);
+            if(source&&!l.countSourceId)l.countSourceId=source.id;
+            const count=compatible&&source.id===l.countSourceId&&(baseline||source.data.capturedDate>=data.date)?keyframeQuantity(source.data.production,range):null;
+            if(!count||count.error){l.quantity=0;l.idCount=null;Object.assign(l,{productionPending:true,productionPendingReason:count?.error||"Chờ file annotation đầy đủ được xác nhận cho ngày báo cáo."});}
+            else{
+            ensure(!all.some(r=>r.kind==="daily"&&r.id!==old?.id&&r.owner_id===owner.id&&r.date!>data.date&&["submitted","approved","imported"].includes(r.status)&&(r.data.lines||[]).some((line:any)=>line.taskId===task.id&&line.activity!=="qc"&&Number(reportEndId(line))<count.end!)),"Mốc ID vượt báo cáo ngày sau; cần sửa mốc ngày sau trước.",409);
+            ensure(!all.some(r=>r.kind==="daily"&&r.id!==old?.id&&r.owner_id===owner.id&&["submitted","approved","imported"].includes(r.status)&&(r.data.lines||[]).some((line:any)=>line.taskId===task.id&&line.keyframeSnapshot&&count.start<=line.keyframeSnapshot.end&&count.end!>=line.keyframeSnapshot.start)),"Khoảng ID đã được tính KPI ở báo cáo khác.",409);
+            l.quantity=count.quantity;l.idCount=count.countedIds;l.countRunId=source!.data.runId;
+            Object.assign(l,{frameCountAtReport:taskFrameCount(task),keyframeSnapshot:{version:baseline?2:1,method:l.productionMethod,runId:source!.data.runId,fileHash:source!.data.fileHash,sourceId:source!.id,sourceRevision:source!.revision,start:count.start,end:count.end,previousEnd:count.previousEnd,previousReportId:count.previousReportId,countedIds:count.countedIds,visible:count.visible,outside:count.outside,baseline:count.baseline,added:count.added,quantity:count.quantity,countedAt:this.stamp()}});
+            }
+          }
+        }
+        else if(countedMethod(previous?.productionMethod)){ensure(false,"Không đổi dòng KPI đã đếm sang công thức cũ",409);}
+        else if(l.idCount!=null){
           ensure(all.some(p=>p.kind==="project"&&p.id===task.project_id&&p.data.unit==="cuboid"),"Công thức ID × frame chỉ áp dụng cho cuboid");
           const previous=old?.data.lines?.find((line:any)=>line.taskId===l.taskId&&line.activity!=="qc"),frames=previous?.idCount!=null?previous.frameCountAtReport:taskFrameCount(task);
           ensure(frames!=null,"Lead cần nhập số frame của Job trước khi tính cuboid");
@@ -273,7 +336,7 @@ export class Hub {
       }
       const reports=[...all.filter(r=>r.kind==="daily"&&r.id!==old?.id),{date:data.date,data}],touched=new Set([...data.lines,...(old?.data.lines||[])].filter((l:any)=>l.activity!=="qc").map((l:any)=>l.taskId));
       for(const taskId of touched){const task=await this.get(taskId,"task"),lines=reports.flatMap(r=>(r.data.lines||[]).filter((l:any)=>l.taskId===taskId&&l.activity!=="qc").map((line:any)=>({date:r.date,line}))).sort((a,b)=>b.date!.localeCompare(a.date!)),total=lines.reduce((n,v)=>n+(v.line.quantity||0),0),latest=lines[0];ensure(task.data.quantity==null||total<=task.data.quantity,"Tổng sản lượng mới trong báo cáo vượt khối lượng task "+task.data.code);reservations.push(this.replace(task,{...task.data,reportedTotal:total,latestProductionDate:latest?.date||null,latestEndId:latest?reportEndId(latest.line):""}));}
-      return this.commit(m, m.id!==owner.id?"Lead viết / sửa Daily Report thay thành viên":status==="submitted"?"Gửi / sửa daily report":"Lưu nháp daily report", old || null, "daily", {...data,qcContentToken:crypto.randomUUID(),createdBy:old?.data.createdBy||m.id,lastEditedBy:m.id,lastEditedAt:this.stamp()}, { owner_id: owner.id, date: data.date, natural_key: owner.id + ":" + data.date, status }, reservations);
+      return this.commit(m, m.id!==owner.id?"Lead viết / sửa Daily Report thay thành viên":status==="submitted"?"Gửi / sửa daily report":"Lưu nháp daily report", old || null, "daily", {...data,...(old?.data.qcActivity?{qcActivity:old.data.qcActivity}:{}),qcContentToken:crypto.randomUUID(),createdBy:old?.data.createdBy||m.id,lastEditedBy:m.id,lastEditedAt:this.stamp()}, { owner_id: owner.id, date: data.date, natural_key: owner.id + ":" + data.date, status }, reservations);
     }
     if (action === "weekly") {
       const data = weeklySchema.parse(b); data.date = weekStart(data.date); ensure(data.date <= today(this.now), "Không gửi báo cáo tuần tương lai");
@@ -290,7 +353,7 @@ export class Hub {
     if(action==="review-fix") {
       const data=z.object({id,errorIndex:z.coerce.number().int().min(0),fixed:z.boolean(),note:str.default("")}).parse(b);
       const review=await this.get(data.id,"review"),task=await this.get(review.task_id!,"task");
-      ensure(task.data.assigneeId===m.id,"Chỉ annotator được giao bài mới được cập nhật sửa lỗi",403);
+      ensure(task.data.assigneeId===m.id||m.role==="Lead","Chỉ annotator được giao bài hoặc Lead được cập nhật sửa lỗi",403);
       ensure(review.data.errors[data.errorIndex],"Không tìm thấy lỗi",404);
       if(review.data.mode==="daily")ensure(!review.data.errors[data.errorIndex].verification,"Lỗi đã được QC kiểm lại; xem kết quả hoặc lỗi được ghi tiếp",409);
       else {ensure(["changes","doing"].includes(task.status),"Bài không ở trạng thái sửa lỗi",409);const latest=(await this.rows("review")).filter(r=>r.task_id===task.id&&r.data.mode!=="daily").sort((a,b)=>b.data.round-a.data.round)[0];ensure(latest?.id===review.id,"Chỉ cập nhật lỗi của lượt QC mới nhất",409);}
@@ -342,6 +405,12 @@ export class Hub {
     const members=await this.members();ensure(!data.member||members.some(m=>m.id===data.member),"Không tìm thấy nhân sự",404);
     const q=data.q.trim().toLocaleLowerCase("vi"),rows=buildTeamEvaluation(members,await this.rows(),data.from,data.to).filter(r=>(!data.member||r.memberId===data.member)&&(!data.role||r.role===data.role)&&(!data.state||r.state===data.state)&&(!q||(r.name+" "+r.username).toLocaleLowerCase("vi").includes(q)));
     return {from:data.from,to:data.to,rows,totals:evaluationTotals(rows)};
+  }
+  async weeklySummary(m:Member,owner:string,start:string){
+    ensure(m.role==="Lead"||owner===m.id,"Chỉ Lead được xem Weekly Report của team hoặc người khác",403);
+    start=weekStart(date.parse(start));ensure(start<=today(this.now),"Không tổng hợp tuần tương lai");
+    const members=await this.members();ensure(owner==="team"||members.some(member=>member.id===owner),"Không tìm thấy nhân sự",404);
+    return buildWeeklySummary(members,await this.rows(),start,today(this.now),owner);
   }
   async aggregate(m: Member, owner: string, start: string) {
     if (owner === "team") {
