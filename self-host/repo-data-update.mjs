@@ -137,7 +137,6 @@ export async function applyPublishedData({ root, dataDir, port = 3210, log = con
     }
     const receipt = readReceipt(dataDir);
     if (receipt?.sha256 === release.sha256 && existsSync(database)) return { status: "already-applied", sha256: release.sha256 };
-    if (receipt && Date.parse(receipt.createdAt) > Date.parse(release.createdAt) && existsSync(database)) return { status: "older-release-skipped", sha256: release.sha256 };
     if (await portIsOpen(port)) throw new Error("Stop the running Hub before applying the repository data release.");
     const archiveFile = resolve(root, "../data/team-backup.cuboid.enc"), keyFile = join(root, ".runtime/repo-backup-key.json");
     ordinary(archiveFile); ordinary(keyFile);

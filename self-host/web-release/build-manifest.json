@@ -1,0 +1,33 @@
+{
+  "format": "cuboid-web-release-v1",
+  "buildId": "c864c2cd21e873c5c635f8e9d077db46b4d7dfc9a87350b78863ee7a68ae9abb",
+  "createdAt": "2026-10-29T01:38:34.143Z",
+  "sourceSha256": "f1f05d00d0f5863446dd626e6473ddbda7404714aff6cb4f3fc76a250706ab7a",
+  "files": [
+    {
+      "path": "client/assets/index-ByQhkBCe.css",
+      "bytes": 171003,
+      "sha256": "96f542840d2c293730c9510739b9e58780880fb4866ce4f0cbcb01d2998d9f63"
+    },
+    {
+      "path": "client/assets/index-DNkrDpXT.js",
+      "bytes": 487444,
+      "sha256": "74a4fe49d7167b38d2584f66a350b6c3081380b46f463b6311937f3677b20ca0"
+    },
+    {
+      "path": "client/favicon.svg",
+      "bytes": 247,
+      "sha256": "f76d79cf2b9c7088116214adfd34170bd5e45ec303ce4006e071cf32b8954ca4"
+    },
+    {
+      "path": "client/index.html",
+      "bytes": 501,
+      "sha256": "b9f073c5e34121a85f61b6e5f15332b3b9fdf0b797bbc1f8837baf1b7e5817d0"
+    },
+    {
+      "path": "server/server.mjs",
+      "bytes": 474499,
+      "sha256": "c1a91c448da68015a329a6b3b433849c1f5e2248a95143af696a4ca92c56eadf"
+    }
+  ]
+}

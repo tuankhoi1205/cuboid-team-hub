@@ -79,4 +79,4 @@ node --experimental-transform-types --test tests/domain.test.ts
 node --test tests/self-host.test.mjs
 ```
 
-Dừng máy chủ trước khi thay bản build rồi khởi chạy lại. Không dùng `npm start` cho bản tự host: lệnh cũ thuộc runtime Sites. Bản này không cần `DB`, `BUCKET`, secret hoặc đăng nhập của Sites.
+Dừng máy chủ trước khi thay bản build rồi khởi chạy lại. `npm start` nay chạy entry tự host và nhận bản portable trong `web-release`; dùng `HUB_USE_LOCAL_BUILD=1` nếu muốn chạy bản tự build riêng. Runtime Sites cũ nằm ở `npm run start:sites`. Bản tự host không cần `DB`, `BUCKET`, secret hoặc đăng nhập của Sites. VPS xem [hướng dẫn Linux](VPS.md).

@@ -1,5 +1,7 @@
 # Chuyển Cuboid Team Hub sang máy host khác
 
+**VPS Linux:** dùng [hướng dẫn VPS](self-host/VPS.md). Repo có sẵn bản web/server portable trong `self-host/web-release`; không chép runtime Windows sang Linux. Sau pull phải cài bản release và khởi động lại đúng service.
+
 ## Gói Windows bàn giao riêng
 
 Gói ZIP bàn giao chứa mã nguồn, bản web đã build, Node 24, Python/openpyxl, cloudflared và bản dữ liệu mã hóa hiện tại. Khóa giải mã nằm trong `self-host/.runtime/repo-backup-key.json`. Gói này cần gửi riêng cho người host; không đăng ZIP hoặc khóa lên kho công khai.

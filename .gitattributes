@@ -1,0 +1,3 @@
+self-host/*.sh text eol=lf
+self-host/web-release/** -text -diff linguist-generated=true
+self-host/web-release/build-manifest.json diff

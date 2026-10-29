@@ -11,6 +11,7 @@ Web local đã được cập nhật và kiểm tra. Mã nguồn hiện có toà
 - Hỏi đáp: câu hỏi, trả lời, tìm kiếm không dấu cả nội dung, chủ đề/trạng thái, lời giải đáp được chọn và FAQ do Lead duyệt.
 - Sao lưu: SQLite, tài khoản và tệp; snapshot AES-256-GCM dùng khóa riêng. Phiên đăng nhập và token khôi phục không có trong snapshot Git.
 - Nhận dữ liệu qua Git: snapshot có manifest phiên bản. Sau pull/build/restart, server sao lưu DB/tệp cũ rồi thay bằng snapshot một lần. Các lần mở lại và push chỉ sửa code giữ dữ liệu nhập thêm. Có kiểm tra checksum, khóa, SQLite, server đang chạy và phục hồi thao tác bị gián đoạn. `PullAndUpdateLocal.cmd` cập nhật app mà giữ tunnel hiện tại.
+- VPS: repo kèm release UI/server đã build, checksum từng file, lệnh cài không cần npm/Vite, entry tự xác định đường dẫn, cấu hình PM2 và hướng dẫn systemd/reverse proxy. `npm start` chạy bản self-host; runtime Sites cũ dùng `start:sites`. Health trả buildId cố định lúc khởi động để phát hiện tiến trình/UI cũ.
 
 ## QC desktop
 

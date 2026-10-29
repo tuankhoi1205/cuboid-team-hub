@@ -1,5 +1,7 @@
 # Cuboid Team Hub
 
+**VPS Linux:** xem [hướng dẫn cập nhật VPS](self-host/VPS.md). Git đã kèm bản UI/server build trong `self-host/web-release`; sau pull chạy `node self-host/web-release.mjs` rồi restart đúng PM2/systemd app. `npm start` chạy bản self-host. `/api/health` trả `buildId` để đối chiếu đúng bản UI đang phục vụ.
+
 Chuyển sang máy host khác: xem [hướng dẫn bàn giao](CHUYEN_MAY_HOST.md). Gói Windows riêng có sẵn bản build/runtime và snapshot; bản clone GitHub cần khóa được gửi riêng.
 
 App QC offline mới nằm ở [qc-desktop](qc-desktop/README.md): mở Datumaro hoặc tạo bảng trắng, kéo chọn frame, ghi log bằng Enter, thanh nổi một ID trên CVAT, xuất Excel và hoàn tất/đổi bài với tiến độ tự lưu. App không dùng phân công hoặc đăng nhập. Web QA/QC được thu gọn thành quản lý Job, nhận kết quả và tải log; đã triển khai lên localhost ngày 28/10/2026.
@@ -83,7 +85,7 @@ For browser QA on managed Linux, use `sites-preview start`. The project's dev sc
 
 The portable profile simulates ChatGPT sign-in only for loopback development requests. Visit `/signin-with-chatgpt?return_to=/` to sign in as `local_seedy` (`seedy@sites.test`, display name `Seedy`) and `/signout-with-chatgpt?return_to=/` to sign out. The development cookie preserves that identity across server restarts. Mock auth is disabled in the managed-linux profile and is not included in production builds; hosted authentication remains dispatch-owned.
 
-The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. After building, `npm start` runs that Worker locally through Wrangler on `127.0.0.1`, sharing `.wrangler/state` with dev preview and local D1 migrations; it does not deploy the site or simulate sign-in. Use the URL printed by the server. Pass `npm start -- --port <port>` to select a different built-preview port.
+The Worker uses `vinext/server/fetch-handler`, including Vinext's config-aware image handling. The legacy Sites preview uses `npm run build:sites` and `npm run start:sites`; the default `npm start` now runs the independent self-host server described above.
 
 Local previews use Miniflare's placeholder `Request.cf` metadata without a network lookup. Set `CLOUDFLARE_CF_FETCH_ENABLED=true` to opt into fetching preview metadata; this setting does not change hosted request metadata.
 

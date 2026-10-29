@@ -4,7 +4,7 @@ import { readFile, writeFile, mkdir, rm, stat } from "node:fs/promises";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve, join, sep, extname } from "node:path";
 import { randomUUID } from "node:crypto";
-import { pathToFileURL } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { z } from "zod";
 import { Hub, HubError, ensure, type Member } from "../lib/domain.ts";
 import { handleHub, type HubRuntime } from "../lib/hub-http.ts";
@@ -38,6 +38,8 @@ class LocalBucket {
 type Options={dataDir:string;publicDir:string;port?:number;now?:()=>Date};
 export async function createLocalApp(options:Options) {
   const dataDir=resolve(options.dataDir),publicDir=resolve(options.publicDir),port=options.port||3210;
+  const startedAt=new Date().toISOString();
+  let buildId:string|null=null;try{buildId=JSON.parse(readFileSync(resolve(publicDir,"../build-manifest.json"),"utf8")).buildId||null;}catch{}
   await mkdir(dataDir,{recursive:true,mode:0o700});
   const store=new SqliteStore(join(dataDir,"cuboid.sqlite"),schema);
   const now=options.now||(()=>new Date()),hub=new Hub(store,LEAD_EMAIL,now());
@@ -51,7 +53,7 @@ export async function createLocalApp(options:Options) {
   await refreshAttendance();
   const attendanceTimer=setInterval(()=>{void refreshAttendance().catch(e=>console.error("Không thể tạo điểm danh mặc định:",e.message));},60000);attendanceTimer.unref();
   const publicOrigin=()=>{
-    try{const value=readFileSync(join(dataDir,"public-url.txt"),"utf8").trim();const u=new URL(value);return u.protocol==="https:"&&u.username===""&&u.password===""&&u.pathname==="/"?u.origin:"";}catch{return "";}
+    try{const value=(process.env.HUB_PUBLIC_ORIGIN||readFileSync(join(dataDir,"public-url.txt"),"utf8")).trim();const u=new URL(value);return u.protocol==="https:"&&u.username===""&&u.password===""&&u.pathname==="/"?u.origin:"";}catch{return "";}
   };
   const origins=()=>new Set([`http://127.0.0.1:${port}`,`http://localhost:${port}`,...(publicOrigin()?[publicOrigin()]:[])]);
   const localRequest=(req:Request)=>["127.0.0.1","localhost"].includes(new URL(req.url).hostname)&&!req.headers.has("cf-connecting-ip")&&!req.headers.has("x-forwarded-for");
@@ -83,7 +85,7 @@ export async function createLocalApp(options:Options) {
       const u=new URL(req.url);ensure(origins().has(u.origin),"Host không được phép",403);
       const secure=u.protocol==="https:";
       if(!["GET","HEAD"].includes(req.method)){ensure(req.headers.get("Origin")===u.origin&&req.headers.get("Sec-Fetch-Site")!=="cross-site","Yêu cầu không cùng nguồn",403);}
-      if(u.pathname==="/api/health")return json({ok:true,service:"cuboid-self-host",auth:"local-password"});
+      if(u.pathname==="/api/health")return json({ok:true,service:"cuboid-self-host",auth:"local-password",buildId,startedAt});
       if(u.pathname==="/api/auth/me") {const m=await auth.current(req);return json({authenticated:!!m,setupRequired:!auth.isSetup(),localSetupAllowed:localRequest(req),member:m?memberInfo(m):null,...(m&&u.searchParams.get("bootstrap")==="1"?{hubState:await bootstrapState(m)}:{})});}
       if(u.pathname==="/api/auth/login"&&req.method==="POST") {const b=await readJson(req,4096);const r=await auth.login(b.username,b.password,ip(req));return json({ok:true,...(b.bootstrap===true?{authenticated:true,member:memberInfo(r.member),hubState:await bootstrapState(r.member)}:{})},200,{"Set-Cookie":sessionCookie(r.token,secure)});}
       if(u.pathname==="/api/auth/setup"&&req.method==="POST") {
@@ -130,7 +132,7 @@ export async function createLocalApp(options:Options) {
 }
 
 if(process.env.HUB_NO_LISTEN!=="1") {
-  const port=Number(process.env.HUB_PORT||3210);const base=process.env.HUB_ROOT||process.cwd();
+  const port=Number(process.env.HUB_PORT||3210);const base=process.env.HUB_ROOT||fileURLToPath(new URL("../../",import.meta.url));
   const {applyPublishedData}=await import(/* @vite-ignore */ pathToFileURL(join(base,"repo-data-update.mjs")).href);
   await applyPublishedData({root:base,dataDir:process.env.HUB_DATA_DIR||join(base,"data"),port});
   const app=await createLocalApp({dataDir:process.env.HUB_DATA_DIR||join(base,"data"),publicDir:process.env.HUB_PUBLIC_DIR||join(base,"dist/client"),port});

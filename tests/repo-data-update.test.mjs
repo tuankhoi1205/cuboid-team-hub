@@ -134,10 +134,10 @@ test("a completed swap interrupted before journal cleanup keeps the committed ne
   assert.equal((await f.apply()).status, "already-applied"); assert.equal(value(f.database), "new");
 });
 
-test("a live update lock is respected and an older release cannot silently roll back data", async () => {
+test("a live update lock is respected and a new release is selected by hash despite clock skew", async () => {
   const f = await fixture(); await writeFile(join(f.dataDir, ".repo-data-update.lock"), JSON.stringify({ pid: process.pid }));
   await assert.rejects(f.apply(), /Another repository data update/); assert.equal(value(f.database), "old");
   await rename(join(f.dataDir, ".repo-data-update.lock"), join(f.dataDir, "test-lock"));
   await writeFile(join(f.dataDir, "repo-data-release.json"), JSON.stringify({ createdAt: "2099-01-01T00:00:00Z", sha256: "a".repeat(64) }));
-  assert.equal((await f.apply()).status, "older-release-skipped"); assert.equal(value(f.database), "old");
+  assert.equal((await f.apply()).status, "applied"); assert.equal(value(f.database), "new");
 });
