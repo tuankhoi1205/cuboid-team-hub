@@ -1,18 +1,18 @@
 {
   "format": "cuboid-web-release-v1",
-  "buildId": "ce12b7dbc1f8e839b78d27753150aa577d875fb5c766382c4ed342f0964d3821",
-  "createdAt": "2026-10-30T03:39:55.393Z",
-  "sourceSha256": "e846d8283eac8dbb621c64dde995a7ca84e0574c74cd3e44c515957d38ee50cb",
+  "buildId": "163567da3ac2abf1f27dab57c222b0c89fdda90126ca47cc9348806181365c68",
+  "createdAt": "2026-10-30T06:54:51.593Z",
+  "sourceSha256": "00e7be57c834964cf91fb74294e6feebe3931a608baf3702158c3d7ec6f9d43a",
   "files": [
-    {
-      "path": "client/assets/index-Bgu13Ihv.js",
-      "bytes": 492001,
-      "sha256": "25632fd78c94ecca602d83b244da5e88a227f98a943764da1e7b7ea0ed62d5cb"
-    },
     {
       "path": "client/assets/index-DhNsSWXy.css",
       "bytes": 171346,
       "sha256": "39c07d7dbdfaed56f2ef38584c5437b525acce2070db418d6422d3567b934bc0"
+    },
+    {
+      "path": "client/assets/index-DZXGpvz3.js",
+      "bytes": 493635,
+      "sha256": "6dd1d92119c7e269ca0196ce2b6ecb513381256e1e603523a2eaf3ddc29f3a2c"
     },
     {
       "path": "client/favicon.svg",
@@ -22,12 +22,12 @@
     {
       "path": "client/index.html",
       "bytes": 501,
-      "sha256": "1365d5db355569be5e54ddad698fe109839bd56a781f0619be38463e5290a989"
+      "sha256": "3f500455f658d04018e0a7565651805fd8a35b2c659184823f7074247e56c1e5"
     },
     {
       "path": "server/server.mjs",
-      "bytes": 477750,
-      "sha256": "538377990f42af2580fb83fcf045a75e808087bdb4d0568b63f1db3ccb65b263"
+      "bytes": 478220,
+      "sha256": "dd895fe635a7465e05bd1c3b22aa1857ccbfa7975c820d481168695a95e32c43"
     }
   ]
 }

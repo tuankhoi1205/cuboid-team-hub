@@ -86,6 +86,8 @@ Nguồn định dạng: [CVAT Backup](https://docs.cvat.ai/docs/dataset_manageme
 Ma trận web tải tối đa 50 ID × 60 frame mỗi trang để tránh hiển thị quá nhiều ô cùng lúc; xuất Excel tối đa 500.000 ô. File đối chiếu được chốt vào phiên khi lưu nháp/hoàn tất. Không gọi API CVAT, không đổi cách tính hoặc số KPI đã lưu.
 ## Xem trước Datumaro khi giao task
 
+Từ 30/10/2026, có thể chọn `default.json`/ZIP ngay khi mở form, trước khi nhập Task/Job ID, người nhận hay frame. Chọn file sẽ tự chạy bộ đếm và điền số cuboid/frame; tổng frame gồm cả frame không có box. Sau khi đọc file, điền thông tin giao việc rồi xác nhận đúng Job. Đổi ID yêu cầu xác nhận lại nhưng không làm mất kết quả đếm. Preview chưa có ID chỉ được gắn vào một task khi lưu; preview đã có ID phải giữ đúng ID đó hoặc đếm lại file. Thay dự án hoặc chuyển task đang sửa sẽ mở một phạm vi preview khác.
+
 Form Giao task tích hợp `kpi-count/preview` (Lead), trả bảng 25 ID/trang, số cuboid theo từng ID, tổng ID/cuboid/frame và mốc đủ KPI theo người/ngày. Xem trước chỉ tạo bản đếm/file riêng của Lead, không tạo task hay thông báo phân công. `kpi-count/assign` xác nhận file và ghi task, source, bản đếm/files cho annotator cùng một giao dịch. Kiểm tra đúng context Task/Job/dự án, giữ mốc cũ và dùng CAS để chống sử dụng lại file vào hai phân công. Gửi lại cùng yêu cầu trả task đã lưu, không tạo trùng. Không tin số lượng do client gửi; lấy từ file đã đếm trên server.
 
 File xem trước chưa gắn task chỉ Lead được đọc/xuất. Khi lưu, annotator và người QC được giao nhận bản đếm của Job; không được đọc preview riêng của Lead. Các tệp vật lý dùng chung khóa trong kho riêng, metadata quyền đọc tách biệt. Sao lưu/khôi phục đầy đủ vẫn giữ các tệp này.

@@ -10509,6 +10509,11 @@ function taskDailyGuide(records, owner, taskId, day, production) {
 	};
 }
 //#endregion
+//#region lib/task-datumaro-scope.ts
+function previewMatchesTask(context, form) {
+	return form.projectId === context.projectId && (form.id || "") === (context.editTaskId || "") && (!context.taskCode || String(form.code || "").trim() === context.taskCode) && (!context.jobId || String(form.jobId || "").trim() === context.jobId);
+}
+//#endregion
 //#region self-host/kpi-count.ts
 var json$1 = (value, status = 200) => Response.json(value, {
 	status,
@@ -10724,6 +10729,12 @@ var KpiCountService = class {
 			return json$1({
 				status: run.status,
 				guide,
+				assignmentContext: preview ? {
+					projectId: run.project_id,
+					taskCode: run.data.taskCode || "",
+					jobId: run.data.jobId || "",
+					editTaskId: run.data.editTaskId || ""
+				} : void 0,
 				production: {
 					...summary,
 					idCount: production.ids.length
@@ -10756,7 +10767,12 @@ var KpiCountService = class {
 				});
 			}
 			ensure(run.status === "ready", "Chờ đếm file xong trước khi giao task", 409);
-			ensure(input.projectId === run.project_id && String(input.code || "").trim() === run.data.taskCode && String(input.jobId || "").trim() === run.data.jobId && (input.id || "") === (run.data.editTaskId || ""), "Thông tin Task/Job đã đổi sau khi tải file. Đếm lại file đúng bài trước khi lưu.", 409);
+			ensure(previewMatchesTask({
+				projectId: run.project_id,
+				taskCode: run.data.taskCode,
+				jobId: run.data.jobId,
+				editTaskId: run.data.editTaskId
+			}, input), "Thông tin Task/Job đã đổi sau khi tải file. Đếm lại file đúng bài trước khi lưu.", 409);
 			try {
 				const { production: raw } = await this.result(run), assignedRunId = randomUUID();
 				let production;
@@ -10921,7 +10937,7 @@ var KpiCountService = class {
 			ensure(project.data.unit === "cuboid" && project.status === "active", "Bộ đếm chỉ áp dụng cho dự án cuboid đang hoạt động");
 			const taskCode = task?.data.code || String(form.get("code") || "").trim(), jobId = task?.data.jobId || String(form.get("jobId") || "").trim(), editTaskId = preview ? String(form.get("editTaskId") || "") : "";
 			if (preview) {
-				ensure(taskCode.length <= 500 && /^\d{0,30}$/.test(jobId) && (taskCode || jobId), "Nhập Task ID / mã batch hoặc Job ID trước khi tải file");
+				ensure(taskCode.length <= 500 && /^\d{0,30}$/.test(jobId), "Task ID / mã batch hoặc Job ID không hợp lệ");
 				if (editTaskId) {
 					const old = await hub.get(editTaskId, "task");
 					ensure(old.project_id === projectId && old.data.code === taskCode && (old.data.jobId || "") === jobId, "Task/Job không khớp bài đang sửa", 409);

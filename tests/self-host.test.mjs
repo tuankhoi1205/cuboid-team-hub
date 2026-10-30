@@ -12,6 +12,21 @@ const origin="http://127.0.0.1:3210";
 const cookie=r=>r.headers.get("set-cookie")?.split(";")[0]||"";
 const leadPassword="A private lead test phrase 2026!";
 const memberPassword="A private member test phrase 2026!";
+test("Lead uploads default.json before task identifiers and frames; assignment binds once and counts empty frames",async()=>{
+ const f=await fixture({now:()=>new Date("2026-10-27T02:00:00Z")});try{
+  const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),project=(await f.app.hub.rows("project")).find(r=>r.data.unit==="cuboid"),before=await f.app.hub.rows("task"),daily=await f.app.hub.rows("daily");
+  const dataset={categories:{label:{labels:[{name:"vehicle"}]}},items:Array.from({length:8},(_,frame)=>({id:"frame_"+frame,attr:{frame},annotations:frame<3?[0,1].map(track=>({type:"cuboid_3d",label_id:0,attributes:{track_id:track}})):[]}))};
+  const upload=async(cookie)=>{const form=new FormData();form.set("projectId",project.id);form.set("file",new File([JSON.stringify(dataset)],"default.json"));return f.req("/api/hub/kpi-count/preview",{method:"POST",cookie,body:form});};
+  assert.equal((await upload(ann)).status,403);let response=await upload(lead);assert.equal(response.status,202,await response.clone().text());const run=await waitBasic(f,(await response.json()).id);assert.equal(run.status,"ready",run.data.error);
+  const result=await(await f.req("/api/hub/kpi-count/result?id="+run.id,{cookie:lead})).json();assert.equal(result.accounting.creditTotal,6);assert.equal(result.accounting.idCount,2);assert.equal(result.accounting.scopeFrames.length,8);assert.equal(result.production.frames,3);assert.equal(result.assignmentContext.jobId,"");assert.equal(result.assignmentContext.taskCode,"");assert.deepEqual(await f.app.hub.rows("task"),before);
+  const task={projectId:project.id,code:"",jobId:"995511",title:"Uploaded before assignment",assigneeId:"member-1",reviewerId:"member-0",assignedDate:"2026-10-27",deadline:"2026-10-30",priority:"normal",quantity:999999,frameCount:999};
+  const assign=body=>f.req("/api/hub/kpi-count/assign",{method:"POST",cookie:lead,body});
+  assert.equal((await assign({runId:run.id,matched:true,task:{...task,jobId:""}})).status,400);assert.equal((await f.app.hub.get(run.id)).data.assignedTaskId,undefined);
+  assert.equal((await assign({runId:run.id,matched:true,task:{...task,projectId:"other"}})).status,409);
+  response=await assign({runId:run.id,matched:true,task});assert.equal(response.status,200,await response.clone().text());const id=(await response.json()).id,created=await f.app.hub.get(id);assert.equal(created.data.frameCount,8);assert.equal(created.data.quantity,6);assert.equal(created.data.jobId,"995511");
+  assert.equal((await assign({runId:run.id,matched:true,task:{...task,jobId:"995512"}})).status,409);assert.equal((await f.app.hub.rows("task")).length,before.length+1);assert.deepEqual(await f.app.hub.rows("daily"),daily);
+ }finally{await f.close();}
+});
 test("missing Python dependencies are detected before QC/count jobs are created and include installation guidance",async()=>{
  const f=await fixture(),previous=process.env.HUB_QC_PYTHON;try{
   const lead=await setupLead(f),qa=await activate(f,await invite(f,lead,2,"QA/QC")),task=(await f.app.hub.rows("task")).find(t=>t.id==="import-task-1241");

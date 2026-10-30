@@ -26,9 +26,17 @@ if(command==="stop") {
  const s=readState();for(const kind of ["tunnel","app"]){const pid=s[kind+"Pid"];if(!pid)continue;const info=processInfo(pid);if(!info)continue;if(!belongs(pid,kind,s))throw new Error(`PID ${pid} no longer belongs to this Hub; it was not stopped.`);try{process.kill(pid);}catch(e){if(e.code!=="ESRCH")throw e;}}
  for(const file of [stateFile,join(data,"public-url.txt")])if(existsSync(file))unlinkSync(file);
  console.log("Hub and its tunnel stopped. Database and uploaded files were kept.");
-} else if(command==="start"||command==="restart-app") {
+} else if(command==="start"||command==="restart-app"||command==="restart-tunnel") {
  if(!existsSync(entry))throw new Error("Build missing. Run node self-host/build.mjs from the project root.");
  let s=readState();
+ if(command==="restart-tunnel"){
+  if(s.tunnelPid&&processInfo(s.tunnelPid)){
+   if(!belongs(s.tunnelPid,"tunnel",s))throw new Error("The recorded process does not belong to this Hub tunnel; it was not stopped.");
+   try{process.kill(s.tunnelPid);}catch(e){if(e.code!=="ESRCH")throw e;}
+  }
+  s.tunnelPid=null;save(s);
+  if(existsSync(join(data,"public-url.txt")))unlinkSync(join(data,"public-url.txt"));
+ }
  if(command==="restart-app"&&s.appPid) {
   if(!belongs(s.appPid,"app",s))throw new Error("The recorded process does not belong to this Hub; it was not stopped.");
   process.kill(s.appPid);
@@ -55,4 +63,4 @@ if(command==="stop") {
   else console.log("Local app is running, but the tunnel is not ready. Check .runtime/tunnel.err.log.");
  }
  if(!args.has("--no-browser"))openBrowser();
-} else throw new Error("Choose start, restart-app or stop.");
+} else throw new Error("Choose start, restart-app, restart-tunnel or stop.");

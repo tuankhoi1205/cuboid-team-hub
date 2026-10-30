@@ -30,6 +30,14 @@ Quick Tunnel không có cam kết uptime; xem [tài liệu Cloudflare](https://d
 
 Mở `StopHub.cmd` để dừng cả ứng dụng và tunnel. Tệp dữ liệu vẫn được giữ. Không xóa thư mục `data` hoặc `.runtime` để xử lý lỗi khởi chạy.
 
+Nếu tiến trình tunnel còn chạy nhưng link cũ báo không tìm thấy, chạy `node self-host/launcher.mjs restart-tunnel --no-browser` từ gốc repo. Lệnh chỉ tạo lại tunnel của ứng dụng này, giữ máy chủ và dữ liệu; lấy link mới trong `self-host/data/public-url.txt` để gửi team. Sau khi cập nhật bản build, `node self-host/launcher.mjs restart-app --no-tunnel --no-browser` khởi động lại riêng web và giữ link tunnel đang chạy.
+
+## Giao task từ file Datumaro
+
+Trong **Dự án & Task → Giao task**, chọn dự án cuboid rồi tải `default.json` hoặc ZIP trước. Web tự đọc tổng Object ID, cuboid và số frame của Job, gồm cả frame không có box; tự điền frame và khối lượng. Sau đó nhập Task/Job ID, chọn người nhận và xác nhận đúng file để lưu. Không cần nhập frame trước khi tải. Task/Job ID vẫn cần điền nếu file không chứa thông tin này. Thay ID sẽ yêu cầu xác nhận lại, kết quả đếm được giữ; thông tin đã gắn với một Job không được dùng lại cho Job khác.
+
+Mốc ID đủ KPI cập nhật theo người nhận và ngày giao. File xem trước chưa tạo phân công; Daily Report và KPI lịch sử giữ nguyên.
+
 ## Mật khẩu và quyền truy cập
 
 - Mỗi người tự đặt mật khẩu; server lưu giá trị băm scrypt, không lưu mật khẩu rõ.
