@@ -12,7 +12,7 @@ Bản đang sử dụng chạy độc lập trên máy Windows hiện tại. M�
 
 DB hoạt động nằm ở `self-host/data/cuboid.sqlite`; các tệp đính kèm ở `self-host/data/files`. Git bỏ qua thư mục dữ liệu đang chạy, nên chỉ push code sẽ không có các báo cáo, điểm danh, phân công và log mới.
 
-Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **29/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 59 Daily Report, 281 bản ghi nghiệp vụ và 43 tệp đính kèm**, bao gồm Q&A và các cập nhật dữ liệu đã xác nhận. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
+Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **30/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 59 Daily Report, 293 bản ghi nghiệp vụ và 43 tệp đính kèm**, bao gồm Q&A, báo cáo 26–28/10, tổng tuần trước đã chốt và các cập nhật dữ liệu đã xác nhận. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
 
 **Khóa giải mã lưu riêng trên máy host:** `self-host/.runtime/repo-backup-key.json`. Khóa không được commit. Lưu thêm một bản khóa ở nơi riêng để có thể khôi phục khi chuyển máy; file mã hóa trên GitHub cần khóa này để mở.
 

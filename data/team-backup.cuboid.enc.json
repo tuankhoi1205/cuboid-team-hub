@@ -1,12 +1,12 @@
 {
   "format": "cuboid-repo-backup-v1",
   "algorithm": "AES-256-GCM",
-  "createdAt": "2026-10-29T01:37:05.909Z",
+  "createdAt": "2026-10-30T02:03:27.310Z",
   "keyId": "de50d1dbce038646",
-  "iv": "xFYj1azGGO27vBzr",
+  "iv": "98qHjSyJ/2m+sdGH",
   "summary": {
     "members": 10,
-    "records": 281,
+    "records": 293,
     "dailyReports": 59,
     "uploadedFiles": 43
   },
@@ -14,5 +14,5 @@
     "Active sessions",
     "Activation/reset tokens"
   ],
-  "sha256": "2bab12f015d169def35dbd4af4f2acfcf57e4ac75eee0252eb300f19d19dd466"
+  "sha256": "8236d2aa9a6ce940ffb9aacb013d50bb50d93fb78d6bb24ce203a24640f44116"
 }
