@@ -9,6 +9,7 @@ import { readFile } from "node:fs/promises";
 import { resolve, join, basename } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { inspectBackup, unpackBackup } from "./repo-backup.mjs";
+import { unpackPlainBackup } from "../scripts/plain-backup.mjs";
 
 const format = "cuboid-repo-data-release-v1";
 const receiptName = "repo-data-release.json";
@@ -138,15 +139,19 @@ export async function applyPublishedData({ root, dataDir, port = 3210, log = con
     const receipt = readReceipt(dataDir);
     if (receipt?.sha256 === release.sha256 && existsSync(database)) return { status: "already-applied", sha256: release.sha256 };
     if (await portIsOpen(port)) throw new Error("Stop the running Hub before applying the repository data release.");
-    const archiveFile = resolve(root, "../data/team-backup.cuboid.enc"), keyFile = join(root, ".runtime/repo-backup-key.json");
-    ordinary(archiveFile); ordinary(keyFile);
-    if (sha256(await readFile(archiveFile)) !== release.sha256) throw new Error("Repository data archive checksum does not match its release.");
-    const header = await inspectBackup(archiveFile);
-    if (header.keyId !== release.keyId || header.createdAt !== release.createdAt || JSON.stringify(header.summary) !== JSON.stringify(release.summary)) throw new Error("Repository data release does not match the encrypted snapshot.");
     const backupRoot = join(dataDir, "backups");
     mkdirSync(backupRoot, { recursive: true, mode: 0o700 }); ordinary(backupRoot, true);
-    const incoming = await unpackBackup({ archiveFile, keyFile, backupRoot });
-    checkedDatabase(join(incoming, "cuboid.sqlite"), header.summary);
+    let incoming;
+    if(release.storage==="plain")incoming=await unpackPlainBackup({directory:resolve(root,"../data/plain"),release,backupRoot});
+    else{
+      const archiveFile=resolve(root,"../data/team-backup.cuboid.enc"),keyFile=join(root,".runtime/repo-backup-key.json");
+      ordinary(archiveFile);ordinary(keyFile);
+      if(sha256(await readFile(archiveFile))!==release.sha256)throw new Error("Repository data archive checksum does not match its release.");
+      const header=await inspectBackup(archiveFile);
+      if(header.keyId!==release.keyId||header.createdAt!==release.createdAt||JSON.stringify(header.summary)!==JSON.stringify(release.summary))throw new Error("Repository data release does not match the encrypted snapshot.");
+      incoming=await unpackBackup({archiveFile,keyFile,backupRoot});
+    }
+    checkedDatabase(join(incoming, "cuboid.sqlite"), release.summary);
     const incomingFiles = join(incoming, "files");
     mkdirSync(incomingFiles, { recursive: true, mode: 0o700 });
     checkpoint(database);

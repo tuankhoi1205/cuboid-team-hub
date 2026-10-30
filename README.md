@@ -2,7 +2,7 @@
 
 **VPS Linux:** xem [hướng dẫn cập nhật VPS](self-host/VPS.md). Git đã kèm bản UI/server build trong `self-host/web-release`; sau pull chạy `node self-host/web-release.mjs` rồi restart đúng PM2/systemd app. `npm start` chạy bản self-host. `/api/health` trả `buildId` để đối chiếu đúng bản UI đang phục vụ.
 
-Chuyển sang máy host khác: xem [hướng dẫn bàn giao](CHUYEN_MAY_HOST.md). Gói Windows riêng có sẵn bản build/runtime và snapshot; bản clone GitHub cần khóa được gửi riêng.
+Chuyển sang máy host khác: xem [hướng dẫn bàn giao](CHUYEN_MAY_HOST.md). Bản GitHub hiện có SQLite/tệp thường trong `data/plain`, không cần khóa giải mã. Gói Windows riêng cũ vẫn có runtime và snapshot tại thời điểm bàn giao.
 
 App QC offline mới nằm ở [qc-desktop](qc-desktop/README.md): mở Datumaro hoặc tạo bảng trắng, kéo chọn frame, ghi log bằng Enter, thanh nổi một ID trên CVAT, xuất Excel và hoàn tất/đổi bài với tiến độ tự lưu. App không dùng phân công hoặc đăng nhập. Web QA/QC được thu gọn thành quản lý Job, nhận kết quả và tải log; đã triển khai lên localhost ngày 28/10/2026.
 
@@ -10,40 +10,41 @@ Bản đang sử dụng chạy độc lập trên máy Windows hiện tại. M�
 
 ## Dữ liệu trên GitHub
 
-DB hoạt động nằm ở `self-host/data/cuboid.sqlite`; các tệp đính kèm ở `self-host/data/files`. Git bỏ qua thư mục dữ liệu đang chạy, nên chỉ push code sẽ không có các báo cáo, điểm danh, phân công và log mới.
+Theo yêu cầu ngày **30/10/2026**, bản đang công bố là **SQLite và tệp thường, không mã hóa, không cần khóa giải mã**:
 
-Repo có [bản sao DB và tệp đã mã hóa](data/team-backup.cuboid.enc), cùng [thông tin thời điểm và số bản ghi](data/team-backup.cuboid.enc.json). Bản ngày **30/10/2026 (giờ Việt Nam)** gồm **10 thành viên, 59 Daily Report, 293 bản ghi nghiệp vụ và 43 tệp đính kèm**, bao gồm Q&A, báo cáo 26–28/10, tổng tuần trước đã chốt và các cập nhật dữ liệu đã xác nhận. Mật khẩu hiện có được bảo toàn trong bản mã hóa; phiên đăng nhập và token kích hoạt/khôi phục đã được loại khỏi bản sao.
+- [data/plain/cuboid.sqlite](data/plain/cuboid.sqlite): DB đầy đủ.
+- [data/plain/files](data/plain/files): 43 tệp đính kèm.
+- [data/plain/checksums.json](data/plain/checksums.json): số bản ghi và SHA-256 từng tệp.
+- [data/team-data-release.json](data/team-data-release.json): phiên bản dữ liệu nạp một lần khi host khởi động.
 
-**Khóa giải mã lưu riêng trên máy host:** `self-host/.runtime/repo-backup-key.json`. Khóa không được commit. Lưu thêm một bản khóa ở nơi riêng để có thể khôi phục khi chuyển máy; file mã hóa trên GitHub cần khóa này để mở.
+Đã đối chiếu 10 thành viên, 293 bản ghi, 59 Daily Report, gồm 9 báo cáo ngày 26/10, 9 ngày 27/10, 8 ngày 28/10 và tổng tuần 19–25/10 đã chỉnh. Tài khoản/mật khẩu hiện có được giữ bằng giá trị băm; phiên đăng nhập, token và giới hạn đăng nhập tạm không nằm trong bản xuất.
 
-Khi anh xuất và push một bản dữ liệu mới, máy host pull về, build và khởi động lại sẽ **tự sao lưu DB/tệp cũ rồi thay toàn bộ bằng snapshot mới**. Mỗi phiên bản dữ liệu chỉ được áp dụng một lần; các lần mở lại hoặc push chỉ có code sẽ giữ dữ liệu nhập thêm. Dữ liệu trên hai máy không được gộp; báo cáo và mật khẩu mới phát sinh ở máy host sau thời điểm snapshot sẽ chỉ còn trong bản sao DB cũ nếu bị thay thế.
+VPS pull rồi cài web và khởi động lại đúng service:
 
-Tạo phiên bản dữ liệu mới từ thư mục gốc repo:
+```bash
+git pull --ff-only
+node self-host/web-release.mjs
+# Restart đúng PM2/systemd service đang dùng.
+```
 
-```powershell
-node self-host/repo-backup.mjs export
-git add data/team-backup.cuboid.enc data/team-backup.cuboid.enc.json data/team-data-release.json
-git commit -m "Update encrypted team data snapshot"
+Server sao lưu DB/tệp cũ rồi nhận dữ liệu từ `data/plain` một lần. Đây là thay toàn bộ theo snapshot, không gộp hai DB; dữ liệu mới nhập riêng ở máy host nằm trong bản sao trước thay thế. Những lần mở sau và push chỉ sửa code giữ dữ liệu mới. DB đang chạy vẫn ở `self-host/data/cuboid.sqlite`, không commit trực tiếp.
+
+Muốn xuất bản dữ liệu thường mới từ máy có DB đầy đủ:
+
+```bash
+node scripts/export-plain-data.mjs
+git add data/plain data/team-data-release.json
+git commit -m "Update plain team data snapshot"
 git push origin main
 ```
 
-Cũng có thể mở `self-host/BackupGitHub.cmd` để tạo snapshot trước khi commit/push. Lệnh export tạo manifest `data/team-data-release.json` và đánh dấu máy xuất đã có phiên bản này. Khóa vẫn gửi riêng, không nằm trên GitHub.
+`self-host/BackupGitHub.cmd` cũng xuất theo cách này. Các file `.enc` cũ được giữ để tương thích lịch sử, không phải dữ liệu đang được manifest lựa chọn. VPS hiện tại không cần lấy khóa.
 
-## Khôi phục dữ liệu từ GitHub
+## Khôi phục dữ liệu thủ công
 
-Trên **máy mới, chưa có DB**: clone repo, cài Node.js 24, chép riêng khóa vào `self-host/.runtime/repo-backup-key.json`, rồi chạy:
+`data/plain` là một thư mục full backup tương thích `self-host/admin.mjs`. Trên máy đã có DB, dừng đúng Hub, chép cả thư mục này vào `self-host/data/backups/`, chạy `node self-host/admin.mjs restore "<thư mục backup vừa chép>" KHOI_PHUC`, rồi khởi động lại. Công cụ sao lưu hiện trạng trước khi thay. Với máy mới, server tự nạp snapshot khi khởi động.
 
-```powershell
-npm ci
-node self-host/build.mjs
-.\self-host\StartHub.cmd
-```
-
-Server tự khôi phục phiên bản dữ liệu được công bố trước khi mở cổng. Sau khôi phục, đăng nhập bằng mật khẩu tại thời điểm sao lưu. Khóa giải mã không phải mật khẩu đăng nhập ứng dụng. Lệnh thủ công `restore-new` vẫn chỉ dùng cho máy chưa có DB.
-
-Trên **máy đã có DB**, mở `self-host/PullAndUpdateLocal.cmd`: script pull bằng `--ff-only`, build, khởi động lại app và áp dụng bản dữ liệu mới. Tunnel đang chạy được giữ nguyên. Có thể làm thủ công bằng `git pull --ff-only`, `node self-host/build.mjs`, rồi `node self-host/launcher.mjs restart-app --no-tunnel`. Chỉ pull khi server còn đang chạy chưa thay DB ngay.
-
-DB/tệp cũ được lưu nguyên trong `self-host/data/backups/before-repo-update-*`. Nếu thiếu khóa, sai checksum, SQLite lỗi hoặc còn server mở DB, quá trình cập nhật dừng trước khi thay DB. Có nhật ký để khôi phục thao tác thay thế bị gián đoạn. Dùng quy trình [khôi phục đầy đủ](self-host/README.md#dữ-liệu-và-sao-lưu) khi cần quay lại bản cũ; marker phiên bản dữ liệu được giữ nên lần mở tiếp theo không tự áp dụng lại cùng snapshot.
+Xem [hướng dẫn VPS](self-host/VPS.md) và [hướng dẫn chuyển máy](CHUYEN_MAY_HOST.md).
 
 Bản mới đã [triển khai ngày 26/10/2026](PENDING_DEPLOY.md), gồm Tool_QC cơ bản trước QC chi tiết. Sản lượng và KPI cũ giữ nguyên. **Weekly Report, UI danh sách chưa gửi và KPI theo mốc Datumaro + ID mới đã triển khai**: Lead xác nhận file ban đầu, file sau bổ sung ID mới; Daily Report nhập ID đã làm tới tự tính cuboid và gợi ý ID đủ KPI theo đúng người, đúng ngày. Xem [hướng dẫn bộ đếm](self-host/tool-qc/README.md). Link Internet hiện tại luôn nằm trong `self-host/data/public-url.txt` trên máy host.
 

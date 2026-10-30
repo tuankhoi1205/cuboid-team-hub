@@ -1,6 +1,6 @@
 # Chạy và cập nhật trên VPS Linux
 
-Repo có mã nguồn, bản web đã build tại `self-host/web-release` và DB/tệp đính kèm mã hóa tại `data/team-backup.cuboid.enc`. Pull không thay tiến trình đang chạy. Bản web đã build dùng được trên Linux/Windows với Node.js 24, không cần npm ci hoặc Vite trên VPS để chạy.
+Repo có mã nguồn, bản web đã build tại `self-host/web-release` và DB/tệp đính kèm không mã hóa tại `data/plain/`. Pull không thay tiến trình đang chạy. Bản web đã build dùng được trên Linux/Windows với Node.js 24, không cần npm ci hoặc Vite trên VPS để chạy.
 
 ## VPS đã có ứng dụng
 
@@ -25,11 +25,11 @@ bash self-host/update-vps.sh TEN_APP_DANG_CHAY
 
 Với systemd: khởi động lại đúng unit hiện tại bằng `sudo systemctl restart TEN_SERVICE`. Nếu service đang chạy `npm start`, lệnh này nay chạy bản self-host, không còn chạy runtime Sites cũ. Entry được khuyến nghị là đường dẫn tuyệt đối tới `self-host/start.mjs` với Node 24.
 
-Service phải tiếp tục dùng đúng `HUB_DATA_DIR` hiện có. Trước khi khởi động, kiểm tra khóa `self-host/.runtime/repo-backup-key.json` đã được chép riêng. Phiên bản dữ liệu mới sẽ sao lưu và thay DB một lần khi server khởi động; dữ liệu sau lần nhận đó được giữ ở các lần mở tiếp theo. Cơ chế này thay toàn bộ theo snapshot, không tự gộp hai DB.
+Service phải tiếp tục dùng đúng `HUB_DATA_DIR` hiện có. Bản công bố ngày 30/10 dùng `data/plain/cuboid.sqlite` và `data/plain/files`, không cần khóa giải mã. Phiên bản dữ liệu mới sẽ sao lưu và thay DB một lần khi server khởi động; dữ liệu sau lần nhận đó được giữ ở các lần mở tiếp theo. Cơ chế này thay toàn bộ theo snapshot, không tự gộp hai DB.
 
 ## VPS mới với PM2
 
-Cài Node 24 và PM2 bằng công cụ quản trị VPS hiện có. Clone repo, chép riêng khóa giải mã, rồi:
+Cài Node 24 và PM2 bằng công cụ quản trị VPS hiện có. Clone repo rồi:
 
 ```bash
 node self-host/web-release.mjs
@@ -62,4 +62,4 @@ self-host/.runtime/qc-python/bin/python -m pip install -r self-host/tool-qc/requ
 
 ## Khi sửa code
 
-Máy phát triển có dependencies chạy `npm run build:host` rồi `npm run package:host`, commit/push cả `self-host/web-release`. Máy host cài bản release bằng lệnh ở trên. Chỉ xuất DB mới bằng `node self-host/repo-backup.mjs export` khi muốn gửi bản dữ liệu thay thế; commit cả ba tệp `data/team-*`.
+Máy phát triển có dependencies chạy `npm run build:host` rồi `npm run package:host`, commit/push cả `self-host/web-release`. Máy host cài bản release bằng lệnh ở trên. Chỉ xuất DB mới bằng `node scripts/export-plain-data.mjs` khi muốn gửi bản dữ liệu thay thế; commit cả `data/plain/` và `data/team-data-release.json`.

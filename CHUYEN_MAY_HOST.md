@@ -1,5 +1,8 @@
 # Chuyển Cuboid Team Hub sang máy host khác
 
+**Bản GitHub ngày 30/10/2026:** dữ liệu đang công bố là SQLite/tệp thường trong `data/plain/`, không cần khóa. Sau pull/cài web/restart, host nhận bản này một lần có sao lưu DB cũ. Tài liệu về file mã hóa bên dưới chỉ dùng cho bản bàn giao cũ. Xuất dữ liệu hiện tại bằng `node scripts/export-plain-data.mjs`.
+
+
 **VPS Linux:** dùng [hướng dẫn VPS](self-host/VPS.md). Repo có sẵn bản web/server portable trong `self-host/web-release`; không chép runtime Windows sang Linux. Sau pull phải cài bản release và khởi động lại đúng service.
 
 ## Gói Windows bàn giao riêng

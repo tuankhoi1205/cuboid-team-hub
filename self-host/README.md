@@ -1,5 +1,8 @@
 # Cuboid Team Hub — chạy trên máy Windows của Khôi
 
+**Bản GitHub ngày 30/10/2026:** dữ liệu đang công bố là SQLite/tệp thường trong `data/plain/`, không cần khóa. Sau pull/cài web/restart, host nhận bản này một lần có sao lưu DB cũ. Tài liệu về file mã hóa bên dưới chỉ dùng cho bản bàn giao cũ. Xuất dữ liệu hiện tại bằng `node scripts/export-plain-data.mjs`.
+
+
 Ứng dụng, dữ liệu SQLite, tài khoản và tệp minh chứng chạy trên máy này. Không cần ChatGPT để đăng nhập hoặc duy trì máy chủ. Cloudflare Tunnel cung cấp đường dẫn HTTPS để team truy cập từ Internet; không cần mua tên miền hay mở cổng trên router.
 
 ## Bắt đầu

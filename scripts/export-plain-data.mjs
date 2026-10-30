@@ -1,0 +1,10 @@
+import {fileURLToPath} from "node:url";
+import {resolve,join} from "node:path";
+import {writeFile} from "node:fs/promises";
+import {packPlainBackup} from "./plain-backup.mjs";
+const repository=fileURLToPath(new URL("../",import.meta.url)),root=join(repository,"self-host"),dataDir=resolve(process.env.HUB_DATA_DIR||join(root,"data"));
+const snapshot=await packPlainBackup({dataDir,directory:join(repository,"data/plain"),workDir:join(repository,".sites-runtime")});
+const release={format:"cuboid-repo-data-release-v1",policy:"replace-on-next-start",storage:"plain",sha256:snapshot.sha256,createdAt:snapshot.createdAt,summary:snapshot.summary};
+await writeFile(join(repository,"data/team-data-release.json"),JSON.stringify(release,null,2)+"\n");
+await writeFile(join(dataDir,"repo-data-release.json"),JSON.stringify({...release,appliedAt:new Date().toISOString(),source:"export"},null,2)+"\n",{mode:0o600});
+console.log(JSON.stringify({directory:join(repository,"data/plain"),encryption:"none",...snapshot.summary,sha256:snapshot.sha256},null,2));

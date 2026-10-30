@@ -1,8 +1,8 @@
 {
   "format": "cuboid-web-release-v1",
   "buildId": "2d252c410ae29883bf48beba468c4f29c559992e0a664baf574683727ae1b3eb",
-  "createdAt": "2026-10-29T02:51:58.217Z",
-  "sourceSha256": "6d089440b329d478848d0748b13b94c5b14745d567c0381f4a144ac31227b80d",
+  "createdAt": "2026-10-30T02:16:20.233Z",
+  "sourceSha256": "ff86ffb30a30481a4a33e0f9c930662ecef9697d02e547b70b5cc058571f2cd2",
   "files": [
     {
       "path": "client/assets/index-Bgu13Ihv.js",

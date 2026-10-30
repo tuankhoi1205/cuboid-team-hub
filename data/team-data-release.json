@@ -1,9 +1,9 @@
 {
   "format": "cuboid-repo-data-release-v1",
   "policy": "replace-on-next-start",
-  "sha256": "8236d2aa9a6ce940ffb9aacb013d50bb50d93fb78d6bb24ce203a24640f44116",
-  "createdAt": "2026-10-30T02:03:27.310Z",
-  "keyId": "de50d1dbce038646",
+  "storage": "plain",
+  "sha256": "e769464af4e056aad622be430130e6d203724c817824bf6d0d996c7892fd491d",
+  "createdAt": "2026-10-30T02:18:03.188Z",
   "summary": {
     "members": 10,
     "records": 293,

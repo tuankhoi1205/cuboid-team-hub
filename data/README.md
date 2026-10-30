@@ -1,16 +1,17 @@
-# Dữ liệu của team
+# Dữ liệu thường — không cần khóa
 
-Snapshot xuất ngày 30/10/2026 đã được giải mã đối chiếu: 10 thành viên, 293 bản ghi, 59 Daily Report và đủ 43 tệp đính kèm. Có 9 báo cáo ngày 26/10, 9 báo cáo ngày 27/10, 8 báo cáo ngày 28/10 và 10 tổng tuần 19–25/10 đã chốt theo số liệu chỉnh sửa. Không tự tạo báo cáo cho người/ngày chưa có dữ liệu.
+Bản đang công bố nằm trong **plain/**, xuất ngày 30/10/2026 theo yêu cầu không mã hóa:
 
-- `initial-import.json`: dữ liệu nhập ban đầu, không phải DB hiện tại.
-- `team-backup.cuboid.enc`: bản sao đầy đủ hiện tại, đã nén và mã hóa AES-256-GCM.
-- `team-backup.cuboid.enc.json`: thời điểm sao lưu, số thành viên/báo cáo/tệp và SHA-256 của bản mã hóa; không chứa dữ liệu từng người.
-- `team-data-release.json`: phiên bản snapshot được máy host áp dụng một lần sau pull/install/restart, có sao lưu DB cũ.
+- **plain/cuboid.sqlite**: SQLite đầy đủ, mở trực tiếp bằng SQLite/DB Browser.
+- **plain/files/**: đủ 43 tệp đính kèm, tên UUID được giữ để khớp records.
+- **plain/manifest.json**: thông tin full backup cho công cụ admin.
+- **plain/checksums.json**: kiểm tra toàn vẹn từng tệp.
+- **team-data-release.json**: chọn storage=plain, không dùng khóa hay file .enc khi nạp bản này.
 
-DB đang chạy nằm tại `self-host/data/cuboid.sqlite`, tệp đính kèm tại `self-host/data/files`. Hai thư mục này được Git bỏ qua. Push mã nguồn không tự sao lưu các thay đổi trong DB.
+Gồm 10 thành viên, 293 bản ghi, 59 Daily Report: 9 báo cáo 26/10, 9 báo cáo 27/10, 8 báo cáo 28/10 và 10 tổng tuần 19–25/10 đã chốt theo số liệu đã chỉnh. Không tạo báo cáo cho người/ngày thiếu số liệu.
 
-Bản mã hóa chứa dữ liệu nghiệp vụ, lịch sử, cấu hình, giá trị băm mật khẩu và tệp đính kèm. Không chứa phiên đăng nhập hoặc token kích hoạt/khôi phục còn dùng được. Khóa giải mã nằm riêng tại `self-host/.runtime/repo-backup-key.json`, được Git bỏ qua. Cần giữ riêng một bản khóa để khôi phục trên máy khác.
+SQLite giữ hash mật khẩu để dùng tài khoản hiện tại. Phiên đăng nhập, token và giới hạn đăng nhập tạm đã loại khỏi bản xuất. Không sao chép thư mục .runtime hoặc khóa vào đây.
 
-Tạo snapshot mới bằng `node self-host/repo-backup.mjs export` hoặc `self-host/BackupGitHub.cmd`, rồi commit/push cả ba tệp `team-*`. Máy nhận áp dụng một lần khi khởi động, thay toàn bộ sau khi sao lưu DB/tệp cũ; không tự gộp dữ liệu hai máy. Không export snapshot mới khi chỉ muốn gửi code/UI.
+Bạn host có thể xử lý SQLite trực tiếp, hoặc pull/cài web/restart service để server tự sao lưu DB cũ rồi nhận bản này một lần. Đây là snapshot thay toàn bộ, không gộp hai DB. Xuất bản mới: node scripts/export-plain-data.mjs, commit/push cả plain/ và team-data-release.json.
 
-Xem cách khôi phục tại [README dự án](../README.md#khôi-phục-dữ-liệu-từ-github).
+initial-import.json chỉ là seed ban đầu. Các file team-backup.cuboid.enc* cũ không phải nguồn đang được manifest chọn. [Hướng dẫn VPS](../self-host/VPS.md).

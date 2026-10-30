@@ -1,3 +1,6 @@
 self-host/*.sh text eol=lf
 self-host/web-release/** -text -diff linguist-generated=true
 self-host/web-release/build-manifest.json diff
+data/plain/** -text -diff linguist-generated=true
+data/plain/checksums.json diff
+data/plain/manifest.json diff
