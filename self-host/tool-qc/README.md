@@ -15,6 +15,17 @@ Tool bỏ qua box có outside khi kiểm hình học, đồng thời hiển th�
 
 ## Python chạy độc lập
 
+Trên **VPS Linux**, dùng Python 3.10+ và cài runtime ngay trong repo:
+
+```bash
+# Ubuntu/Debian nếu chưa có Python/venv/pip:
+sudo apt-get install -y python3 python3-venv python3-pip
+python3 self-host/tool-qc/setup_runtime.py
+python3 self-host/tool-qc/setup_runtime.py --check
+```
+
+Sau đó restart service web. Bộ cài Linux dùng được cả lần đầu và cập nhật venv cũ. `requirements.txt` ở gốc repo và `self-host/tool-qc/requirements.txt` dùng cùng dependencies đã kiểm thử: openpyxl 3.1.5 và et_xmlfile 2.0.0. Không cần Tkinter/display hay PyInstaller cho web. Đường dẫn venv được web nhận tự động; nếu service có override `HUB_QC_PYTHON` thì cập nhật nó theo [hướng dẫn VPS](../VPS.md).
+
 Máy hiện tại đã chuẩn bị Python + openpyxl riêng trong `self-host/.runtime/qc-python`. Bản này chạy độc lập, không gọi runtime của Codex/ChatGPT. Thư mục runtime không được commit lên Git.
 
 Trên máy Windows mới có Python và openpyxl:
@@ -24,7 +35,7 @@ py -3 -m pip install -r self-host/tool-qc/requirements.txt
 py -3 self-host/tool-qc/setup_runtime.py
 ```
 
-Script chép bộ chạy riêng, không ghi đè runtime đã có. Hoặc đặt biến môi trường `HUB_QC_PYTHON` tới Python có openpyxl. Linux có thể tạo venv tại `self-host/.runtime/qc-python` và cài requirements.
+Trên Windows, script chép bộ chạy riêng và không ghi đè runtime đã có. Hoặc đặt `HUB_QC_PYTHON` tới Python có openpyxl. `--check` chỉ kiểm tra import, không cài hay chép runtime.
 
 Tool chạy trong tiến trình nền riêng, một file mỗi lúc, dừng sau 120 giây nếu vượt thời gian. Kết quả lớn được lưu trong kho tệp riêng và phân trang 25 dòng; không nhúng toàn bộ cảnh báo vào phản hồi workspace. Sau khi server khởi động lại, lượt đang chạy được chuyển sang không hoàn tất để chạy lại.
 

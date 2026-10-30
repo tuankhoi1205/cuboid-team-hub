@@ -9,6 +9,7 @@ import {matrixPage,type MatrixPresence} from "../lib/qc-matrix.ts";
 import {qcMatrixSheets} from "../lib/qc-matrix-export.ts";
 import {qcIdRows} from "../lib/qc-table.ts";
 import {xlsx} from "../lib/export.ts";
+import {qcPython,qcPythonEnvironment} from "./python-runtime.ts";
 
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 const bounded=async(req:Request,limit:number)=>{ensure(Number(req.headers.get("Content-Length")||0)<=limit,"Tệp quá lớn",413);const reader=req.body?.getReader();ensure(reader,"Thiếu tệp dữ liệu");let size=0;const chunks:Uint8Array[]=[];for(;;){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>limit){await reader.cancel();ensure(false,"Tệp tối đa 25 MB",413);}chunks.push(r.value);}return Buffer.concat(chunks);};
@@ -16,7 +17,7 @@ export class BasicQcService{
  private jobs=new Map<string,{child?:ChildProcess;promise?:Promise<void>}>();
  private matrices=new Map<string,Promise<MatrixPresence>>();
  constructor(private makeHub:()=>Hub,private dataDir:string,private qcRoot:string){}
- private python(){return process.env.HUB_QC_PYTHON||join(this.qcRoot,".runtime/qc-python",process.platform==="win32"?"python.exe":"bin/python");}
+ private python(){return qcPython(this.qcRoot);}
  private busy(){return [...this.jobs.values()].some(v=>!v.child||v.child.exitCode===null&&v.child.signalCode===null);}
  async initialize(){const hub=this.makeHub();for(const row of await hub.rows("qc-basic"))if(row.status==="running")await hub.db.batch([hub.replace(row,{...row.data,error:"Máy chủ đã khởi động lại khi đang kiểm tra. Có thể tải lại file để chạy lại."},"failed")]);}
  private async assignment(m:Member,id:string,write=false){const hub=this.makeHub(),assignment=await hub.get(id,"qc-assignment"),task=await hub.get(assignment.task_id!,"task");const checker=m.role==="Lead"||m.role==="QA/QC"&&assignment.data.reviewerId===m.id;ensure(checker||!write&&assignment.data.assigneeId===m.id,"Không có quyền kiểm tra Job này",403);if(write)ensure(task.data.assigneeId===assignment.data.assigneeId,"Lead cần cập nhật người làm trong phân công trước",409);return{hub,assignment,task};}
@@ -44,7 +45,7 @@ export class BasicQcService{
    let sheets;try{const source=!review&&!session.data.draft?{...session,data:{...session.data,draft:{idChecks:qcIdRows(session.data.rangeStart,session.data.endId,"Khác")}}}:session;sheets=qcMatrixSheets(source,review,presence,warnings);}catch(e){ensure(false,e instanceof Error?e.message:"Không xuất được ma trận");}
    const bytes=xlsx(sheets!);return new Response(bytes as BodyInit,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet","Content-Disposition":`attachment; filename="QC_Matrix_${String(session.data.jobId||"Job").replace(/[^a-zA-Z0-9_-]/g,"_")}_${session.date}${review?"":"_draft"}.xlsx"`,"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
   }
-  if(action==="environment"&&req.method==="GET")return json({ready:existsSync(this.python())&&existsSync(join(this.qcRoot,"tool-qc/web_runner.py"))});
+  if(action==="environment"&&req.method==="GET"){const runtime=await qcPythonEnvironment(this.qcRoot);return json({...runtime,ready:runtime.ready&&existsSync(join(this.qcRoot,"tool-qc/web_runner.py"))});}
   if(["result","matrix"].includes(action)&&req.method==="GET"){
    const hub=this.makeHub(),run=await hub.get(url.searchParams.get("id")||"","qc-basic");await this.assignment(m,run.data.assignmentId);ensure(run.data.resultKey,"Kết quả chưa sẵn sàng",409);
    ensure(/^files\/[a-f0-9-]{36}$/.test(run.data.resultKey),"Mã tệp kết quả không hợp lệ");const result=JSON.parse(await readFile(join(this.dataDir,run.data.resultKey),"utf8"));
@@ -66,7 +67,7 @@ export class BasicQcService{
    const bytes=await bounded(req,26*1024*1024),form=await new Response(bytes,{headers:{"Content-Type":req.headers.get("Content-Type")||""}}).formData(),{hub,assignment,task}=await this.assignment(m,String(form.get("assignmentId")||""),true);
    const file=form.get("file") as File,offset=Number(form.get("trackOffset")??1),reason=String(form.get("reason")||"").trim();ensure(file&&typeof file.arrayBuffer==="function"&&file.size>0&&file.size<=25*1024*1024&&/\.(json|zip)$/i.test(file.name),"Chọn file Datumaro .json hoặc .zip, tối đa 25 MB");ensure([0,1].includes(offset),"Offset Track ID chỉ nhận 0 hoặc 1");
    const state=basicQcState(await hub.rows(),assignment);ensure(!state.latest||state.latest.status!=="running","Job đang chạy Tool_QC",409);if(state.runs.some(r=>["ready","completed"].includes(r.status))){hub.lead(m);ensure(reason.length>=3&&reason.length<=1000,"Lead cần ghi lý do chạy lại (3–1.000 ký tự)");}
-   ensure(existsSync(this.python()),"Máy host chưa cài bộ chạy Tool_QC. Lead xem hướng dẫn cài Python/openpyxl.",503);
+   const runtime=await qcPythonEnvironment(this.qcRoot);ensure(runtime.ready,runtime.message,503);
    const id=randomUUID(),input=Buffer.from(await file.arrayBuffer()),name=file.name.replace(/[\\/\u0000-\u001f]/g,"_").slice(0,180),data={assignmentId:assignment.id,assigneeId:assignment.data.assigneeId,reviewerId:assignment.data.reviewerId,taskCode:task.data.code||"",jobId:task.data.jobId||"",fileName:name,fileHash:createHash("sha256").update(input).digest("hex"),trackOffset:offset,requestedBy:m.id,startedAt:hub.stamp(),reason};
    // Claim before awaiting I/O so two requests cannot start concurrent processes.
    ensure(!this.busy(),"Tool_QC đang bận",409);this.jobs.set(id,{});

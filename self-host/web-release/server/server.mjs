@@ -10077,6 +10077,61 @@ function qcMatrixSheets(session, review, presence, warnings) {
 	];
 }
 //#endregion
+//#region self-host/python-runtime.ts
+function qcPython(root, env = process.env, platform = process.platform) {
+	if (env.HUB_QC_PYTHON) return env.HUB_QC_PYTHON;
+	const local = join(root, ".runtime/qc-python", platform === "win32" ? "python.exe" : "bin/python");
+	return existsSync(local) ? local : platform === "win32" ? "python" : "python3";
+}
+var cache = /* @__PURE__ */ new Map();
+async function qcPythonEnvironment(root) {
+	const python = qcPython(root), previous = cache.get(python);
+	if (previous && previous.until > Date.now()) return previous.promise;
+	const message = "Máy host chưa có Python/openpyxl cho Tool_QC. Trên VPS chạy: python3 self-host/tool-qc/setup_runtime.py rồi khởi động lại dịch vụ web. Nếu đã cài, kiểm tra HUB_QC_PYTHON của dịch vụ.";
+	const promise = new Promise((done) => {
+		execFile(python, [
+			"-I",
+			"-X",
+			"utf8",
+			"-c",
+			"import sys,json,openpyxl,et_xmlfile; print(json.dumps({'python':sys.version.split()[0],'openpyxl':openpyxl.__version__}))"
+		], {
+			windowsHide: true,
+			timeout: 1e4,
+			maxBuffer: 64 * 1024,
+			encoding: "utf8"
+		}, (error, stdout) => {
+			if (error) {
+				done({
+					ready: false,
+					message
+				});
+				return;
+			}
+			try {
+				const result = JSON.parse(stdout);
+				done({
+					ready: true,
+					python: String(result.python),
+					openpyxl: String(result.openpyxl),
+					message: ""
+				});
+			} catch {
+				done({
+					ready: false,
+					message
+				});
+			}
+		});
+	});
+	cache.set(python, {
+		until: Date.now() + 3e4,
+		promise
+	});
+	if (cache.size > 16) cache.delete(cache.keys().next().value);
+	return promise;
+}
+//#endregion
 //#region self-host/qc-basic.ts
 var json$2 = (value, status = 200) => Response.json(value, {
 	status,
@@ -10112,7 +10167,7 @@ var BasicQcService = class {
 		this.matrices = /* @__PURE__ */ new Map();
 	}
 	python() {
-		return process.env.HUB_QC_PYTHON || join(this.qcRoot, ".runtime/qc-python", process.platform === "win32" ? "python.exe" : "bin/python");
+		return qcPython(this.qcRoot);
 	}
 	busy() {
 		return [...this.jobs.values()].some((v) => !v.child || v.child.exitCode === null && v.child.signalCode === null);
@@ -10213,7 +10268,13 @@ var BasicQcService = class {
 				"X-Content-Type-Options": "nosniff"
 			} });
 		}
-		if (action === "environment" && req.method === "GET") return json$2({ ready: existsSync(this.python()) && existsSync(join(this.qcRoot, "tool-qc/web_runner.py")) });
+		if (action === "environment" && req.method === "GET") {
+			const runtime = await qcPythonEnvironment(this.qcRoot);
+			return json$2({
+				...runtime,
+				ready: runtime.ready && existsSync(join(this.qcRoot, "tool-qc/web_runner.py"))
+			});
+		}
 		if (["result", "matrix"].includes(action) && req.method === "GET") {
 			const run = await this.makeHub().get(url.searchParams.get("id") || "", "qc-basic");
 			await this.assignment(m, run.data.assignmentId);
@@ -10270,7 +10331,8 @@ var BasicQcService = class {
 				hub.lead(m);
 				ensure(reason.length >= 3 && reason.length <= 1e3, "Lead cần ghi lý do chạy lại (3–1.000 ký tự)");
 			}
-			ensure(existsSync(this.python()), "Máy host chưa cài bộ chạy Tool_QC. Lead xem hướng dẫn cài Python/openpyxl.", 503);
+			const runtime = await qcPythonEnvironment(this.qcRoot);
+			ensure(runtime.ready, runtime.message, 503);
 			const id = randomUUID(), input = Buffer.from(await file.arrayBuffer()), name = file.name.replace(/[\\/\u0000-\u001f]/g, "_").slice(0, 180), data = {
 				assignmentId: assignment.id,
 				assigneeId: assignment.data.assigneeId,
@@ -10484,7 +10546,7 @@ var KpiCountService = class {
 		this.jobs = /* @__PURE__ */ new Map();
 	}
 	python() {
-		return process.env.HUB_QC_PYTHON || join(this.root, ".runtime/qc-python", process.platform === "win32" ? "python.exe" : "bin/python");
+		return qcPython(this.root);
 	}
 	async initialize() {
 		const hub = this.makeHub();
@@ -10869,7 +10931,8 @@ var KpiCountService = class {
 			ensure(file && typeof file.arrayBuffer === "function" && file.size > 0 && file.size <= 25 * 1024 * 1024 && /\.(json|zip)$/i.test(file.name), "Chọn JSON/ZIP annotation tối đa 25 MB");
 			ensure([0, 1].includes(offset), "Offset chỉ nhận 0 hoặc 1");
 			ensure(!index || /^\d{1,4}$/.test(index) && Number(index) > 0, "Thứ tự Job phải từ 1 đến 9.999");
-			ensure(existsSync(this.python()), "Máy host chưa có Python/openpyxl cho Tool_QC", 503);
+			const runtime = await qcPythonEnvironment(this.root);
+			ensure(runtime.ready, runtime.message, 503);
 			const input = Buffer.from(await file.arrayBuffer()), id = randomUUID(), data = {
 				taskCode,
 				jobId,

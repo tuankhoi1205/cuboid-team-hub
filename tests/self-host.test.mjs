@@ -12,6 +12,17 @@ const origin="http://127.0.0.1:3210";
 const cookie=r=>r.headers.get("set-cookie")?.split(";")[0]||"";
 const leadPassword="A private lead test phrase 2026!";
 const memberPassword="A private member test phrase 2026!";
+test("missing Python dependencies are detected before QC/count jobs are created and include installation guidance",async()=>{
+ const f=await fixture(),previous=process.env.HUB_QC_PYTHON;try{
+  const lead=await setupLead(f),qa=await activate(f,await invite(f,lead,2,"QA/QC")),task=(await f.app.hub.rows("task")).find(t=>t.id==="import-task-1241");
+  const assigned=await f.req("/api/hub/qc-job-assign",{method:"POST",cookie:lead,body:{taskId:task.id,reviewerId:"member-2"}});assert.equal(assigned.status,200);const assignmentId=(await assigned.json()).id;
+  process.env.HUB_QC_PYTHON=process.execPath;
+  const environment=await(await f.req("/api/hub/qc-basic/environment",{cookie:qa})).json();assert.equal(environment.ready,false);assert.match(environment.message,/setup_runtime.py/);
+  let response=await basicRun(f,qa,assignmentId,{content:JSON.stringify(basicDataset()),name:"test.json"});assert.equal(response.status,503);assert.match((await response.json()).error,/setup_runtime.py/);assert.equal((await f.app.hub.rows("qc-basic")).length,0);
+  const form=new FormData();form.set("projectId",task.project_id);form.set("jobId","995566");form.set("file",new File([JSON.stringify(basicDataset())],"test.json"));
+  response=await f.req("/api/hub/kpi-count/preview",{method:"POST",cookie:lead,body:form});assert.equal(response.status,503);assert.match((await response.json()).error,/setup_runtime.py/);assert.equal((await f.app.hub.rows("kpi-count")).length,0);
+ }finally{if(previous===undefined)delete process.env.HUB_QC_PYTHON;else process.env.HUB_QC_PYTHON=previous;await f.close();}
+});
 test("Lead controls past-day target and production independently; reports remain writable and backups retain policy",async()=>{
  const f=await fixture({now:()=>new Date("2026-10-28T02:00:00Z")});try{
   const lead=await setupLead(f),ann=await activate(f,await invite(f,lead,1)),task=(await f.app.hub.rows("task")).find(t=>t.data.assigneeId==="member-1");

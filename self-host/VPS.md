@@ -51,14 +51,24 @@ node -p "JSON.parse(require('fs').readFileSync('self-host/web-release/build-mani
 
 `buildId` ở health phải khớp manifest. Nếu health không có `buildId` thì VPS còn chạy server cũ hoặc reverse proxy đang trỏ nhầm app/cổng. Nếu local health đúng nhưng URL công khai sai, kiểm tra upstream của reverse proxy. Sau đó tải lại trình duyệt bằng Ctrl+F5. Trang HTML không cache; các asset có tên chứa hash.
 
-Node/Python của Windows không được chuyển sang VPS. Nếu dùng Tool_QC/bộ đếm file, cài Python 3 và tạo venv trên VPS:
+Node/Python của Windows không được chuyển sang VPS. Tool_QC và bộ đếm cần Python 3.10+ với openpyxl. Trên Ubuntu/Debian cài điều kiện hệ thống rồi chạy bộ cài venv dùng chung:
 
 ```bash
-python3 -m venv self-host/.runtime/qc-python
-self-host/.runtime/qc-python/bin/python -m pip install -r self-host/tool-qc/requirements.txt
+sudo apt-get update
+sudo apt-get install -y python3 python3-venv python3-pip
+python3 self-host/tool-qc/setup_runtime.py
+python3 self-host/tool-qc/setup_runtime.py --check
 ```
 
-Đặt `HUB_QC_PYTHON` của service thành đường dẫn tuyệt đối tới `self-host/.runtime/qc-python/bin/python`.
+Bộ cài tạo/cập nhật `self-host/.runtime/qc-python/bin/python`, cài các phiên bản đã kiểm thử từ requirements và kiểm tra import trước khi báo thành công. Web tự nhận venv này, hoặc Python hệ thống nếu chưa có venv. File `requirements.txt` tại gốc repo cũng trỏ tới cùng bộ dependencies; web không cần tkinter, display hay PyInstaller.
+
+Khởi động lại đúng service sau khi cài. Nếu PM2/service từng đặt `HUB_QC_PYTHON`, cập nhật đường dẫn override đó. Với PM2:
+
+```bash
+HUB_QC_PYTHON="$(pwd)/self-host/.runtime/qc-python/bin/python" pm2 restart TEN_APP_DANG_CHAY --update-env
+```
+
+Kiểm tra môi trường giờ thực sự chạy `import openpyxl, et_xmlfile`, không chỉ kiểm tra file Python tồn tại. Nếu vẫn lỗi, chạy lệnh `--check` ở trên bằng cùng user chạy service. Bộ đếm Datumaro/KPI và Tool_QC dùng chung Python.
 
 ## Khi sửa code
 

@@ -1,0 +1,3 @@
+# Python dependencies for the self-hosted Tool_QC and Datumaro/KPI tools.
+# Install with the same interpreter the web service uses (prefer the local venv).
+-r self-host/tool-qc/requirements.txt

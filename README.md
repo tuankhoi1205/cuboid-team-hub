@@ -2,6 +2,8 @@
 
 **VPS Linux:** xem [hướng dẫn cập nhật VPS](self-host/VPS.md). Git đã kèm bản UI/server build trong `self-host/web-release`; sau pull chạy `node self-host/web-release.mjs` rồi restart đúng PM2/systemd app. `npm start` chạy bản self-host. `/api/health` trả `buildId` để đối chiếu đúng bản UI đang phục vụ.
 
+**Python cho Tool_QC / bộ đếm:** chạy `python3 self-host/tool-qc/setup_runtime.py` trên VPS, kiểm tra bằng `--check` rồi restart service. Bộ cài tạo venv và cài requirements đã kiểm thử; `requirements.txt` ở gốc repo dùng cùng dependencies. Xem lệnh cài Python/venv trên Ubuntu/Debian trong hướng dẫn VPS.
+
 Chuyển sang máy host khác: xem [hướng dẫn bàn giao](CHUYEN_MAY_HOST.md). Bản GitHub hiện có SQLite/tệp thường trong `data/plain`, không cần khóa giải mã. Gói Windows riêng cũ vẫn có runtime và snapshot tại thời điểm bàn giao.
 
 App QC offline mới nằm ở [qc-desktop](qc-desktop/README.md): mở Datumaro hoặc tạo bảng trắng, kéo chọn frame, ghi log bằng Enter, thanh nổi một ID trên CVAT, xuất Excel và hoàn tất/đổi bài với tiến độ tự lưu. App không dùng phân công hoặc đăng nhập. Web QA/QC được thu gọn thành quản lý Job, nhận kết quả và tải log; đã triển khai lên localhost ngày 28/10/2026.

@@ -1,6 +1,5 @@
 import {spawn,type ChildProcess} from "node:child_process";
 import {readFile,writeFile,mkdir,mkdtemp,rm} from "node:fs/promises";
-import {existsSync} from "node:fs";
 import {resolve,join,sep} from "node:path";
 import {createHash,randomUUID} from "node:crypto";
 import {Hub,ensure,today,type Member,type Row} from "../lib/domain.ts";
@@ -8,6 +7,7 @@ import {keyframeComparisons,type KeyframeProduction} from "../lib/keyframe-kpi.t
 import {xlsx} from "../lib/export.ts";
 import {datumaroLedger,completedThrough,DATUMARO_METHOD,type DatumaroLedger} from "../lib/datumaro-kpi.ts";
 import {taskDailyGuide} from "../lib/task-kpi-guide.ts";
+import {qcPython,qcPythonEnvironment} from "./python-runtime.ts";
 
 const json=(value:unknown,status=200)=>Response.json(value,{status,headers:{"Cache-Control":"private, no-store","X-Content-Type-Options":"nosniff"}});
 async function bytes(req:Request,limit:number){ensure(Number(req.headers.get("Content-Length")||0)<=limit,"Tệp quá lớn",413);const reader=req.body?.getReader();ensure(reader,"Thiếu dữ liệu");const chunks:Uint8Array[]=[];let size=0;for(;;){const r=await reader.read();if(r.done)break;size+=r.value.length;if(size>limit){await reader.cancel();ensure(false,"Tệp tối đa 25 MB",413);}chunks.push(r.value);}return Buffer.concat(chunks);}
@@ -15,7 +15,7 @@ export class KpiCountService{
  private jobs=new Map<string,{child?:ChildProcess;promise?:Promise<void>}>();
  private busy(){return [...this.jobs.values()].some(job=>!job.child||job.child.exitCode===null&&job.child.signalCode===null);}
  constructor(private makeHub:()=>Hub,private dataDir:string,private root:string){}
- private python(){return process.env.HUB_QC_PYTHON||join(this.root,".runtime/qc-python",process.platform==="win32"?"python.exe":"bin/python");}
+ private python(){return qcPython(this.root);}
  async initialize(){const hub=this.makeHub();for(const run of await hub.rows("kpi-count"))if(run.status==="running")await hub.db.batch([hub.replace(run,{...run.data,error:"Máy chủ khởi động lại; tải lại file để đếm tiếp."},"failed")]);}
  private async task(m:Member,id:string){const hub=this.makeHub(),task=await hub.get(id,"task");ensure(task.data.assigneeId===m.id||m.role==="Lead"||m.role==="QA/QC"&&(task.data.reviewerId===m.id||(await hub.rows("qc-assignment")).some(r=>r.task_id===id&&r.data.reviewerId===m.id)),"Không có quyền xem hoặc đếm Job này",403);return{hub,task};}
  private async result(run:Row){ensure(/^files\/[a-f0-9-]{36}$/.test(run.data.resultKey||""),"Kết quả chưa sẵn sàng",409);return JSON.parse(await readFile(join(this.dataDir,run.data.resultKey),"utf8"));}
@@ -83,7 +83,7 @@ export class KpiCountService{
    const projectId=task?.project_id||String(form.get("projectId")||""),project=await hub.get(projectId,"project");ensure(project.data.unit==="cuboid"&&project.status==="active","Bộ đếm chỉ áp dụng cho dự án cuboid đang hoạt động");
    const taskCode=task?.data.code||String(form.get("code")||"").trim(),jobId=task?.data.jobId||String(form.get("jobId")||"").trim(),editTaskId=preview?String(form.get("editTaskId")||""):"";if(preview){ensure(taskCode.length<=500&&/^\d{0,30}$/.test(jobId)&&(taskCode||jobId),"Nhập Task ID / mã batch hoặc Job ID trước khi tải file");if(editTaskId){const old=await hub.get(editTaskId,"task");ensure(old.project_id===projectId&&old.data.code===taskCode&&(old.data.jobId||"")===jobId,"Task/Job không khớp bài đang sửa",409);}}
    const file=form.get("file") as File,offset=Number(form.get("trackOffset")??1),index=String(form.get("jobIndex")||"").trim();
-   ensure(file&&typeof file.arrayBuffer==="function"&&file.size>0&&file.size<=25*1024*1024&&/\.(json|zip)$/i.test(file.name),"Chọn JSON/ZIP annotation tối đa 25 MB");ensure([0,1].includes(offset),"Offset chỉ nhận 0 hoặc 1");ensure(!index||/^\d{1,4}$/.test(index)&&Number(index)>0,"Thứ tự Job phải từ 1 đến 9.999");ensure(existsSync(this.python()),"Máy host chưa có Python/openpyxl cho Tool_QC",503);
+   ensure(file&&typeof file.arrayBuffer==="function"&&file.size>0&&file.size<=25*1024*1024&&/\.(json|zip)$/i.test(file.name),"Chọn JSON/ZIP annotation tối đa 25 MB");ensure([0,1].includes(offset),"Offset chỉ nhận 0 hoặc 1");ensure(!index||/^\d{1,4}$/.test(index)&&Number(index)>0,"Thứ tự Job phải từ 1 đến 9.999");const runtime=await qcPythonEnvironment(this.root);ensure(runtime.ready,runtime.message,503);
    const input=Buffer.from(await file.arrayBuffer()),id=randomUUID(),data={taskCode,jobId,requestedBy:m.id,...(preview?{assignmentPreview:true,editTaskId}:{}),fileName:file.name.replace(/[\\/\u0000-\u001f]/g,"_").slice(0,180),fileHash:createHash("sha256").update(input).digest("hex"),trackOffset:offset,jobIndex:index,startedAt:hub.stamp()};
    ensure(!this.busy(),"Bộ đếm đang bận",409);this.jobs.set(id,{});
    try{await hub.db.batch([hub.insert("kpi-count",id,data,{owner_id:task?.data.assigneeId||m.id,task_id:task?.id||null,project_id:projectId,date:today(hub.now),status:"running"}),hub.audit(m.id,preview?"Xem file Datumaro trước khi giao task":"Đếm cuboid keyframe từ file",id,null,{taskId:task?.id||null,fileHash:data.fileHash})]);}catch(e){this.jobs.delete(id);throw e;}

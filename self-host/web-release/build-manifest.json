@@ -1,8 +1,8 @@
 {
   "format": "cuboid-web-release-v1",
-  "buildId": "2d252c410ae29883bf48beba468c4f29c559992e0a664baf574683727ae1b3eb",
-  "createdAt": "2026-10-30T02:16:20.233Z",
-  "sourceSha256": "ff86ffb30a30481a4a33e0f9c930662ecef9697d02e547b70b5cc058571f2cd2",
+  "buildId": "ce12b7dbc1f8e839b78d27753150aa577d875fb5c766382c4ed342f0964d3821",
+  "createdAt": "2026-10-30T03:39:55.393Z",
+  "sourceSha256": "e846d8283eac8dbb621c64dde995a7ca84e0574c74cd3e44c515957d38ee50cb",
   "files": [
     {
       "path": "client/assets/index-Bgu13Ihv.js",
@@ -26,8 +26,8 @@
     },
     {
       "path": "server/server.mjs",
-      "bytes": 476261,
-      "sha256": "4c3dc4f838ec2db2edfefd36eaf65ab50c1690e01d1b5a2064003f6a9f0dd7d4"
+      "bytes": 477750,
+      "sha256": "538377990f42af2580fb83fcf045a75e808087bdb4d0568b63f1db3ccb65b263"
     }
   ]
 }
